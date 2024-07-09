@@ -108,17 +108,13 @@ docker-build-base:
 
 pages:
   stage: deploy
-  image: node:latest
+  image: busybox
   rules:
     # run this job only on manual trigger in GitLab web ui
     - if: '$CI_PIPELINE_SOURCE == "web"'
   script:
     # install npm deps and build storybook
-    - cd front
-    - npm install
-    - npm run build-storybook -- -o ../public
+    - echo "The site will be deployed to $CI_PAGES_URL"
   artifacts:
-    # save storybook build as an artifact
-    untracked: true
     paths:
       - public
