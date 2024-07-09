@@ -418,12 +418,6 @@ REST_FRAMEWORK = {
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
-if 'test' in sys.argv:
-    try:
-        from .test_settings import *  # noqa F401
-    except (ModuleNotFoundError, ImportError):
-        pass
-
 CPU_COST_FACTOR = os.getenv('CPU_COST_FACTOR', 1.0)
 GPU_COST = os.getenv('GPU_COST', 1.0)
 
@@ -451,8 +445,14 @@ EXPORT_OPENITI_MARKDOWN_ENABLED = os.getenv('EXPORT_OPENITI_MARKDOWN', "False").
 # Boolean used to enable the OpenITI TEI XML export mode
 EXPORT_TEI_XML_ENABLED = os.getenv('EXPORT_TEI_XML', "False").lower() not in ("false", "0")
 
+# catch-all exceptions, add them to report and skip the erroring files
+# set to True in a dev environment
+EXPORT_STRICT = False
+
 # Boolean used to enable text alignment with Passim
 TEXT_ALIGNMENT_ENABLED = os.getenv('TEXT_ALIGNMENT', "False").lower() not in ("false", "0")
+
+IMPORT_ALLOWED_DOMAINS = os.getenv('IMPORT_ALLOWED_DOMAINS', '*').split(',')
 
 # Sentry support
 SENTRY_DSN = os.getenv('SENTRY_DSN')
@@ -476,4 +476,9 @@ if SENTRY_DSN:
         ],
     )
 
-IMPORT_ALLOWED_DOMAINS = os.getenv('IMPORT_ALLOWED_DOMAINS', '*').split(',')
+# this needs to be on the bottom so that test configuration can override anything else
+if 'test' in sys.argv:
+    try:
+        from .test_settings import *  # noqa F401
+    except (ModuleNotFoundError, ImportError):
+        pass

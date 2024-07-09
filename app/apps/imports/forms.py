@@ -216,6 +216,10 @@ class ExportForm(RegionTypesFormMixin, BootstrapFormMixin, forms.Form):
         initial=False, required=False,
         label=_('Include images'),
         help_text=_("Will significantly increase the time to produce and download the export."))
+    include_characters = forms.BooleanField(
+        initial=False, required=False,
+        label=_("Include character bounding boxes."),
+        help_text=_("This data is only present for transcriptions coming from automatic recognition and is invalidated by manual edition."))
 
     def __init__(self, document, user, *args, **kwargs):
         self.document = document
@@ -244,6 +248,7 @@ class ExportForm(RegionTypesFormMixin, BootstrapFormMixin, forms.Form):
                               self.cleaned_data['region_types'],
                               document_pk=self.document.pk,
                               include_images=self.cleaned_data['include_images'],
+                              include_characters=self.cleaned_data['include_characters'],
                               user_pk=self.user.pk,
                               report_label=_('Export %(document_name)s') % {'document_name': self.document.name})
 
