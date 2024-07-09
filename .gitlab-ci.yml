@@ -27,10 +27,7 @@ tests:
   # of one of the modules changed
   # and the tests will be run on the actual build anyway
   rules:
-    - if: '$CI_COMMIT_TAG !~ /^base-.*/'
-      when: on_success
-    # skip when building gitlab pages
-    - if: '$LANDING == null'
+    - if: '$CI_COMMIT_TAG !~ /^base-.*/ && $LANDING == null'
       when: on_success
     - when: never
   services:
@@ -84,6 +81,12 @@ build:
 .docker-build:
   stage: build
   image: docker:19.03.1
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
+
   services:
     - docker:dind
   variables:
@@ -92,25 +95,36 @@ build:
 
 docker-build-app:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh app
 
 docker-build-exim:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh exim
 
 docker-build-nginx:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh nginx
 
 docker-build-base:
   extends: .docker-build
-
   # Run this only on base tags
   rules:
     - if: '$CI_COMMIT_TAG =~ /^base-.*/'
