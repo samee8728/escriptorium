@@ -7,6 +7,12 @@ lint:
   image: python:3.8
   stage: test
 
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
+
   before_script:
     - pip install pre-commit
 
@@ -21,10 +27,9 @@ tests:
   # of one of the modules changed
   # and the tests will be run on the actual build anyway
   rules:
-    - if: '$CI_COMMIT_TAG !~ /^base-.*/'
+    - if: '$CI_COMMIT_TAG !~ /^base-.*/ && $LANDING == null'
       when: on_success
     - when: never
-
   services:
     - postgres:15
     - redis:alpine
@@ -55,6 +60,12 @@ build:
   stage: build
   image: node:12-alpine
 
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
+
   artifacts:
     paths:
       - front/dist
@@ -70,6 +81,12 @@ build:
 .docker-build:
   stage: build
   image: docker:19.03.1
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
+
   services:
     - docker:dind
   variables:
@@ -78,25 +95,36 @@ build:
 
 docker-build-app:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh app
 
 docker-build-exim:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh exim
 
 docker-build-nginx:
   extends: .docker-build
-
+  rules:
+    # skip when building gitlab pages
+    - if: '$LANDING == null'
+      when: on_success
+    - when: never
   script:
     - ci/build.sh nginx
 
 docker-build-base:
   extends: .docker-build
-
   # Run this only on base tags
   rules:
     - if: '$CI_COMMIT_TAG =~ /^base-.*/'
@@ -108,17 +136,13 @@ docker-build-base:
 
 pages:
   stage: deploy
-  image: node:latest
+  image: busybox
   rules:
     # run this job only on manual trigger in GitLab web ui
     - if: '$CI_PIPELINE_SOURCE == "web"'
   script:
     # install npm deps and build storybook
-    - cd front
-    - npm install
-    - npm run build-storybook -- -o ../public
+    - echo "The site will be deployed to $CI_PAGES_URL"
   artifacts:
-    # save storybook build as an artifact
-    untracked: true
     paths:
       - public
