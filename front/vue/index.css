@@ -150,7 +150,7 @@
     overflow: auto;
     width: 100%;
 }
-.escr-body main:has(.escr-vue-enabled) {
+.escr-body  {
     background-color: var(--background);
     color: var(--text1);
     min-height: 100vh;
