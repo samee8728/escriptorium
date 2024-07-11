@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -72,6 +73,21 @@ class ProcessFailureException(Exception):
 
 class AlreadyProcessingException(Exception):
     pass
+
+
+class CascadeUpdate():
+    """
+    This base class allows to update the updated_at date of parent models on save of this model
+    so that the most recent appears first in the UI.
+    For example if a user changes a line transcription the dates of its Line, DocumentPart, Document and Project will be changed automatically.
+    Avoid doing it for asynchronous processes doing a lot of queries (like import/export/training etc)
+    """
+    cascade_to = NotImplementedError
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if 'celery' not in sys.argv:
+            getattr(self, self.cascade_to).save()
 
 
 class Typology(ExportModelOperationsMixin("Typology"), models.Model):
@@ -218,11 +234,13 @@ class AnnotationTaxonomy(OrderedModel):
         return self.name
 
 
-class Annotation(models.Model):
+class Annotation(CascadeUpdate, models.Model):
     taxonomy = models.ForeignKey(AnnotationTaxonomy, on_delete=models.CASCADE)
     comments = ArrayField(models.TextField(), null=True, blank=True)
 
     part = models.ForeignKey("core.DocumentPart", on_delete=models.CASCADE)
+
+    cascade_to = 'part'
 
     class Meta:
         abstract = True
@@ -355,19 +373,23 @@ class Script(ExportModelOperationsMixin("Script"), models.Model):
         return self.name
 
 
-class DocumentMetadata(ExportModelOperationsMixin("DocumentMetadata"), models.Model):
+class DocumentMetadata(ExportModelOperationsMixin("DocumentMetadata"), CascadeUpdate, models.Model):
     document = models.ForeignKey("core.Document", on_delete=models.CASCADE)
     key = models.ForeignKey(Metadata, on_delete=models.CASCADE)
     value = models.CharField(max_length=512)
+
+    cascade_to = 'document'
 
     def __str__(self):
         return "%s:%s" % (self.document.name, self.key.name)
 
 
-class DocumentPartMetadata(models.Model):
+class DocumentPartMetadata(CascadeUpdate, models.Model):
     part = models.ForeignKey("core.DocumentPart", on_delete=models.CASCADE, related_name="metadata")
     key = models.ForeignKey(Metadata, on_delete=models.CASCADE)
     value = models.CharField(max_length=512)
+
+    cascade_to = 'part'
 
     def __str__(self):
         return "%s:%s" % (self.part.name, self.key.name)
@@ -462,7 +484,7 @@ class DocumentManager(models.Manager):
         )
 
 
-class Document(ExportModelOperationsMixin("Document"), models.Model):
+class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Model):
     WORKFLOW_STATE_DRAFT = 0
     WORKFLOW_STATE_PUBLISHED = 2  # viewable by the world
     WORKFLOW_STATE_ARCHIVED = 3  #
@@ -557,6 +579,8 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
     tags = models.ManyToManyField(DocumentTag, blank=True, related_name='tags_document')
 
     objects = DocumentManager()
+
+    cascade_to = 'project'
 
     class Meta:
         ordering = ["-updated_at"]
@@ -848,7 +872,7 @@ def document_images_path(instance, filename):
     return "documents/{0}/{1}".format(instance.document.pk, filename)
 
 
-class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
+class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, OrderedModel):
     """
     Represents a physical part of a larger document that is usually a page
     """
@@ -899,6 +923,8 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
 
     # this is denormalized because it's too heavy to calculate on the fly
     transcription_progress = models.PositiveSmallIntegerField(default=0)
+
+    cascade_to = 'document'
 
     class Meta(OrderedModel.Meta):
         pass
@@ -1629,7 +1655,7 @@ def validate_3_points(value):
         )
 
 
-class Block(ExportModelOperationsMixin("Block"), OrderedModel, models.Model):
+class Block(ExportModelOperationsMixin("Block"), OrderedModel, CascadeUpdate, models.Model):
     """
     Represents a visually close group of graphemes (characters) bound by the same semantic
     example: a paragraph, a margin note or floating text
@@ -1646,6 +1672,8 @@ class Block(ExportModelOperationsMixin("Block"), OrderedModel, models.Model):
     order_with_respect_to = "document_part"
 
     external_id = models.CharField(max_length=128, blank=True, null=True)
+
+    cascade_to = 'document_part'
 
     class Meta(OrderedModel.Meta):
         pass
@@ -1712,7 +1740,7 @@ class LineManager(OrderedModelManager):
                          transcription=transcription))))
 
 
-class Line(OrderedModel):  # Versioned,
+class Line(CascadeUpdate, OrderedModel):
     """
     Represents a segmented line from a DocumentPart
     """
@@ -1744,6 +1772,8 @@ class Line(OrderedModel):  # Versioned,
     external_id = models.CharField(max_length=128, blank=True, null=True)
 
     objects = LineManager()
+
+    cascade_to = 'document_part'
 
     class Meta(OrderedModel.Meta):
         pass
@@ -1831,7 +1861,7 @@ class Transcription(ExportModelOperationsMixin("Transcription"), models.Model):
 
 
 class LineTranscription(
-    ExportModelOperationsMixin("LineTranscription"), Versioned, models.Model
+        ExportModelOperationsMixin("LineTranscription"), Versioned, CascadeUpdate, models.Model
 ):
     """
     Represents a transcribed line of a document part in a given transcription
@@ -1881,6 +1911,7 @@ class LineTranscription(
         Line, null=True, on_delete=models.CASCADE, related_name="transcriptions"
     )
     version_ignore_fields = ("line", "transcription")
+    cascade_to = 'line'
 
     class Meta:
         unique_together = ["line", "transcription"]
