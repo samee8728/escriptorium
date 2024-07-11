@@ -7,7 +7,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import time
 import uuid
 from datetime import datetime
@@ -59,6 +58,7 @@ from core.tasks import (
 )
 from core.utils import ColorField
 from core.validators import JSONSchemaValidator
+from escriptorium.celery import app as celery_app
 from reporting.models import TASK_FINAL_STATES, TaskReport
 from users.consumers import send_event
 from users.models import User
@@ -86,7 +86,8 @@ class CascadeUpdate():
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        if 'celery' not in sys.argv:
+
+        if celery_app.current_task is None:  # check if we are an asynchronous task
             getattr(self, self.cascade_to).save()
 
 
