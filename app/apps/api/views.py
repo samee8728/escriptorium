@@ -302,7 +302,7 @@ class DocumentViewSet(ModelViewSet):
         return Document.objects.for_user(self.request.user).prefetch_related(
             Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
             Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
-        ).annotate(parts_count=Count('parts', distinct=True))
+        ).annotate(parts_count=Count('parts', distinct=True)).order_by('-updated_at')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
