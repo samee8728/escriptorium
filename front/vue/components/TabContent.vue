@@ -273,7 +273,7 @@ export default {
         // load the full size image when we reach a scale > 1
         this.zoom.events.addEventListener("wheelzoom.updated", function(ev) {
             if (this.partsLoaded && !this.fullsizeimage) {
-                let ratio = ev.target.clientWidth / this.image.size[0];
+                let ratio = document.body.clientWidth / this.image.size[0];
                 if (this.zoom.scale  * ratio > 1) {
                     this.prefetchImage(this.image.uri, function() {
                         this.fullsizeimage = true;
