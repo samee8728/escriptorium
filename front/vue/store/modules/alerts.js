@@ -25,22 +25,30 @@ const actions = {
     async addError({ commit }, error) {
         const { response, message } = error;
         const url = response?.config?.baseURL + response?.config?.url;
-        if (response?.status === 400) {
-            Object.entries(response.data?.error || {}).forEach(
-                ([key, value]) => {
-                    if (key === "non_field_errors") {
-                        commit("addAlert", {
-                            color: "alert",
-                            message: `Error: ${value}`,
-                        });
-                    } else {
-                        commit("addAlert", {
-                            color: "alert",
-                            message: `Error for field ${key}: ${value}`,
-                        });
-                    }
-                },
-            );
+        if (response?.status === 400 && response.data?.error) {
+            let err = response.data.error;
+            if (typeof err === "string" || err instanceof String) {
+                commit("addAlert", {
+                    color: "alert",
+                    message: `Error: ${err}`,
+                });
+            } else {
+                Object.entries(err || {}).forEach(
+                    ([key, value]) => {
+                        if (key === "non_field_errors") {
+                            commit("addAlert", {
+                                color: "alert",
+                                message: `Error: ${value}`,
+                            });
+                        } else {
+                            commit("addAlert", {
+                                color: "alert",
+                                message: `Error for field ${key}: ${value}`,
+                            });
+                        }
+                    },
+                );
+            }
         } else {
             commit("addAlert", {
                 color: "alert",
