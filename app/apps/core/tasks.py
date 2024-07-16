@@ -395,8 +395,6 @@ def segment(instance_pk=None, user_pk=None, model_pk=None,
         if user:
             user.notify(_("Something went wrong during the segmentation!"),
                         id="segmentation-error", level='danger')
-        part.workflow_state = part.WORKFLOW_STATE_CONVERTED
-        part.save()
         logger.exception(e)
         raise e
     else:
@@ -693,8 +691,6 @@ def transcribe(instance_pk=None, model_pk=None, user_pk=None,
         if user:
             user.notify(_("Something went wrong during the transcription!"),
                         id="transcription-error", level='danger')
-        part.workflow_state = part.WORKFLOW_STATE_SEGMENTED
-        part.save()
         logger.exception(e)
         raise e
     else:
@@ -765,18 +761,9 @@ def align(
         DocumentPart = apps.get_model('core', 'DocumentPart')
         parts = DocumentPart.objects.filter(pk__in=part_pks)
         for part in parts:
-            part.workflow_state = part.WORKFLOW_STATE_TRANSCRIBING
-            send_event("document", document_pk, "part:workflow", {
-                "id": part.pk,
-                "process": "align",
-                "status": "canceled",
-                "task_id": task.request.id,
-            })
             reports = part.reports.filter(method="core.tasks.align")
             if reports.exists():
                 reports.last().cancel(None)
-
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
         logger.exception(e)
         raise e
     else:

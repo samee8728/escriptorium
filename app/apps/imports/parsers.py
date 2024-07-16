@@ -157,7 +157,6 @@ class PdfParser(ParserDocument):
                 part.image.save(fname, ContentFile(page.write_to_buffer('.png')))
                 part.image_file_size = part.image.size
                 part.source = f"pdf//{pdfname}"
-                part.workflow_state = DocumentPart.WORKFLOW_STATE_CONVERTED
                 part.save()
                 self.post_process_image(part)
 
@@ -243,7 +242,6 @@ class ZipParser(ParserDocument):
                                 os.path.basename(self.file.name),
                                 filename
                             )
-                            part.workflow_state = DocumentPart.WORKFLOW_STATE_CONVERTED
                             part.save()
                             self.post_process_image(part)
 
@@ -297,7 +295,6 @@ class METSBaseParser():
         part.image.save(filename, ContentFile(image.read()))
         part.image_file_size = part.image.size
         part.source = source
-        part.workflow_state = DocumentPart.WORKFLOW_STATE_CONVERTED
         part.save()
         self.post_process_image(part)
 

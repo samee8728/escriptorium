@@ -130,10 +130,6 @@ class DocumentPartTestCase(CoreFactoryTestCase):
             old_lt = LineTranscription.objects.get(line=line, transcription=self.transcription)
             self.assertEqual(new_lt.content, old_lt.content)
 
-        # should set workflow state after completion
-        self.part.refresh_from_db()
-        self.assertEqual(self.part.workflow_state, self.part.WORKFLOW_STATE_ALIGNED)
-
     @patch("core.models.subprocess")
     def test_align_deleted_line(self, _):
         """Unit tests for DocumentPart text alignment when a line is missing a LineTranscription"""

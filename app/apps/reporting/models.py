@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -7,8 +8,11 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from escriptorium.celery import app
+from users.consumers import send_event
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class TaskGroup(models.Model):
@@ -93,7 +97,21 @@ class TaskReport(models.Model):
             canceled_by = f"user {username}"
         self.append(f"Canceled by {canceled_by}")
 
-        app.control.revoke(self.task_id, terminate=True)
+        if self.task_id:
+            app.control.revoke(self.task_id, terminate=True)
+
+        if self.document:
+            try:
+                send_event('document', self.document.pk, 'part:workflow',
+                           {'id': self.document.pk,
+                            'process': self.method.split('.')[-1],
+                            'status': 'canceled',
+                            'reason': _('Canceled.'),
+                            "task_id": self.task_id})
+
+            except Exception as e:
+                # don't crash on websocket error
+                logger.exception(e)
         self.save()
 
     def error(self, message):
@@ -125,6 +143,13 @@ class TaskReport(models.Model):
         task_duration = (self.done_at - self.started_at).total_seconds()
         self.gpu_cost = (task_duration * settings.GPU_COST) / 60
         self.save()
+
+    def recover(self):
+        result = app.AsyncResult(self.task_id)
+        before_date = datetime.now(timezone.utc) - timedelta(seconds=settings.TASK_RECOVER_DELAY)
+        if result.status == 'PENDING' and self.queued_at < before_date:
+            self.error("Task seems to not be running, recovering db state.")
+            self.save()
 
 
 TASK_FINAL_STATES = [TaskReport.WORKFLOW_STATE_ERROR, TaskReport.WORKFLOW_STATE_DONE, TaskReport.WORKFLOW_STATE_CANCELED]

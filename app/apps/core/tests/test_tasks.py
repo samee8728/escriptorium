@@ -186,6 +186,4 @@ class TasksTestCase(CoreFactoryTestCase):
                     user.notify.assert_called()
                     apps_mock.get_model.assert_called_with('core', 'DocumentPart')
                     apps_mock.get_model.return_value.objects.filter.assert_called_with(pk__in=[1])
-                    parts = apps_mock.get_model.return_value.objects.filter.return_value
-                    apps_mock.get_model.return_value.objects.bulk_update.assert_called_with(parts, ["workflow_state"])
                     self.assertEqual(mock_log.output[0][:17], "ERROR:core.tasks:")

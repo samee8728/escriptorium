@@ -52,15 +52,15 @@ class ProjectAdmin(admin.ModelAdmin):
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ['pk', 'name', 'owner', 'project']
     inlines = (MetadataInline, OcrModelDocumentInline, DocumentTagInline)
-
-
-class DocumentPartAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'title', 'document']
     actions = ['recover']
 
     def recover(self, request, queryset):
         for instance in queryset:
             instance.recover()
+
+
+class DocumentPartAdmin(admin.ModelAdmin):
+    list_display = ['pk', 'title', 'document']
 
 
 class TranscriptionAdmin(admin.ModelAdmin):

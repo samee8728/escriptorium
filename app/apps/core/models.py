@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from glob import glob
 from os import makedirs, path
 from statistics import mean
@@ -591,15 +591,6 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
         return self.workflow_state == self.WORKFLOW_STATE_ARCHIVED
 
     @cached_property
-    def is_transcribing(self):
-        return (
-            self.parts.filter(
-                workflow_state__gte=DocumentPart.WORKFLOW_STATE_TRANSCRIBING
-            ).first()
-            is not None
-        )
-
-    @cached_property
     def default_text_direction(self):
         if self.main_script:
             if self.main_script.text_direction == Script.TEXT_DIRECTION_HORIZONTAL_RTL:
@@ -625,12 +616,33 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
 
     def tasks_finished(self):
         """Return False if alignment or other tasks are still happening"""
-        if self.parts.filter(workflow_state=DocumentPart.WORKFLOW_STATE_ALIGNING).count() == 0:
-            for part in self.parts.all():
-                if not part.tasks_finished():
-                    return False
-            return True
-        return False
+        return not (TaskReport.objects
+                    .filter(Q(document=self) | Q(document_part__document=self))
+                    .filter(Q(workflow_state=TaskReport.WORKFLOW_STATE_QUEUED)
+                            | Q(workflow_state=TaskReport.WORKFLOW_STATE_STARTED))
+                    .exists()
+                    )
+
+    def recoverable(self):
+        try:
+            return (TaskReport.objects
+                    .filter(Q(document=self) | Q(document_part__document=self))
+                    .exclude(workflow_state__in=TASK_FINAL_STATES)
+                    .filter(queued_at__lt=datetime.now() - timedelta(seconds=settings.TASK_RECOVER_DELAY))
+                    .exists()
+                    )
+        except KeyError:
+            return True  # probably old school stored task
+
+    def recover(self):
+        if self.recoverable():
+            ghost_tasks = (TaskReport.objects
+                           .filter(Q(document=self) | Q(document_part__document=self))
+                           .exclude(workflow_state__in=TASK_FINAL_STATES)
+                           .filter(queued_at__lt=datetime.now() - timedelta(seconds=settings.TASK_RECOVER_DELAY))
+                           )
+            for task in ghost_tasks:
+                task.recover()
 
     def build_alignment_input_dict(self, line_transcriptions, pk):
         """Helper function for alignment to create a dict of lines for Passim input"""
@@ -656,11 +668,6 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
     def align(self, part_pks, transcription_pk, witness_pk, n_gram, max_offset, merge, full_doc, threshold, region_types, layer_name, beam_size, gap):
         """Use subprocess call to Passim to align transcription with textual witness"""
         parts = DocumentPart.objects.filter(document=self, pk__in=part_pks)
-
-        for part in parts:
-            # set workflow state
-            part.workflow_state = part.WORKFLOW_STATE_ALIGNING
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
 
         # set output directory
         outdir = path.join(
@@ -803,11 +810,6 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
         if not getattr(settings, "KEEP_ALIGNMENT_TEMPFILES", None):
             shutil.rmtree(outdir, ignore_errors=True)
 
-        for part in parts:
-            # set workflow state
-            part.workflow_state = part.WORKFLOW_STATE_ALIGNED
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
-
     def queue_alignment(self, parts, **kwargs):
         if not self.tasks_finished():
             raise AlreadyProcessingException
@@ -819,29 +821,15 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
 
     def cancel_alignment(self, revoke_task=True, username=None):
         """Cancel the alignment task; adapted from OcrModel"""
-        task_id = None
 
         # We don't need to search for the task_id if the alignment task was already revoked
         if revoke_task:
             try:
                 report = self.reports.filter(document_pk=self.pk, method="core.tasks.align").last()
-                task_id = report.task_id
             except AttributeError:
                 raise ProcessFailureException(_("Couldn't find the alignment task."))
             else:
                 report.cancel(username)
-
-        # set all aligning parts to a canceled workflow state
-        parts = DocumentPart.objects.filter(document=self, workflow_state=DocumentPart.WORKFLOW_STATE_ALIGNING)
-        for part in parts:
-            send_event("document", self.pk, "part:workflow", {
-                "id": part.pk,
-                "process": "align",
-                "status": "canceled",
-                "task_id": task_id,
-            })
-            part.workflow_state = part.WORKFLOW_STATE_TRANSCRIBING
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
 
 
 def document_images_path(instance, filename):
@@ -872,30 +860,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
     updated_at = models.DateTimeField(auto_now=True)
     # average confidence for lines on this part (page), from the transcription whose confidence is the best
     max_avg_confidence = models.FloatField(null=True, blank=True)
-
-    WORKFLOW_STATE_CREATED = 0
-    WORKFLOW_STATE_CONVERTING = 1
-    WORKFLOW_STATE_CONVERTED = 2
-    # WORKFLOW_STATE_BINARIZING = 3  # legacy
-    # WORKFLOW_STATE_BINARIZED = 4
-    WORKFLOW_STATE_SEGMENTING = 5
-    WORKFLOW_STATE_SEGMENTED = 6
-    WORKFLOW_STATE_TRANSCRIBING = 7
-    WORKFLOW_STATE_ALIGNING = 8
-    WORKFLOW_STATE_ALIGNED = 9
-    WORKFLOW_STATE_CHOICES = (
-        (WORKFLOW_STATE_CREATED, _("Created")),
-        (WORKFLOW_STATE_CONVERTING, _("Converting")),
-        (WORKFLOW_STATE_CONVERTED, _("Converted")),
-        (WORKFLOW_STATE_SEGMENTING, _("Segmenting")),
-        (WORKFLOW_STATE_SEGMENTED, _("Segmented")),
-        (WORKFLOW_STATE_TRANSCRIBING, _("Transcribing")),
-        (WORKFLOW_STATE_ALIGNING, _("Aligning")),
-        (WORKFLOW_STATE_ALIGNED, _("Aligned")),
-    )
-    workflow_state = models.PositiveSmallIntegerField(
-        choices=WORKFLOW_STATE_CHOICES, default=WORKFLOW_STATE_CREATED
-    )
 
     # this is denormalized because it's too heavy to calculate on the fly
     transcription_progress = models.PositiveSmallIntegerField(default=0)
@@ -1083,20 +1047,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
     @property
     def workflow(self):
         w = {}
-        if self.workflow_state == self.WORKFLOW_STATE_CONVERTING:
-            w["convert"] = "ongoing"
-        elif self.workflow_state > self.WORKFLOW_STATE_CONVERTING:
-            w["convert"] = "done"
-        if self.workflow_state == self.WORKFLOW_STATE_SEGMENTING:
-            w["segment"] = "ongoing"
-        elif self.workflow_state > self.WORKFLOW_STATE_SEGMENTING:
-            w["segment"] = "done"
-        if self.workflow_state == self.WORKFLOW_STATE_TRANSCRIBING:
-            w["transcribe"] = "done"
-        if self.workflow_state == self.WORKFLOW_STATE_ALIGNING:
-            w["align"] = "ongoing"
-        if self.workflow_state == self.WORKFLOW_STATE_ALIGNED:
-            w["align"] = "done"
 
         for report in self.reports.filter(method__in=["core.tasks.segment", "core.tasks.transcribe", "core.tasks.align"]):
             # Only the last registered state for each group of tasks will be kept
@@ -1106,23 +1056,16 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_STARTED:
                 w[short_name] = "ongoing"
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_ERROR:
-                w[short_name] = "canceled"
-            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
                 w[short_name] = "error"
+            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
+                w[short_name] = "canceled"
+            elif report.workflow_state == TaskReport.WORKFLOW_STATE_DONE:
+                w[short_name] = "done"
         return w
 
     def tasks_finished(self):
-        try:
-            return len([t for t in self.workflow if t["status"] != "done"]) == 0
-        except (KeyError, TypeError):
-            return True
-
-    def in_queue(self):
-        try:
-            return (self.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_STARTED).count() == 0
-                    and self.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_QUEUED).count() > 0)
-        except (KeyError, TypeError):
-            return False
+        return not self.reports.filter(Q(workflow_state=TaskReport.WORKFLOW_STATE_QUEUED)
+                                       | Q(workflow_state=TaskReport.WORKFLOW_STATE_STARTED)).exists()
 
     def cancel_tasks(self, username=None):
         uncancelable = [
@@ -1130,73 +1073,30 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             "core.tasks.lossless_compression",
             "core.tasks.generate_part_thumbnails",
         ]
-        if self.workflow_state == self.WORKFLOW_STATE_SEGMENTING:
-            self.workflow_state = self.WORKFLOW_STATE_CONVERTED
-            self.save()
-        elif self.workflow_state == self.WORKFLOW_STATE_ALIGNING:
-            # handle alignment cancellation on the entire document
-            self.document.cancel_alignment(username=username)
-            return
 
-        for report in self.reports.all():
-            if report.method not in uncancelable and report.workflow_state not in TASK_FINAL_STATES:
-                if report.task_id:  # if not, it is still pending
-                    report.cancel(username)
-
-                try:
-                    send_event('document', self.document.pk, 'part:workflow',
-                               {'id': self.id,
-                                'process': report.method.split('.')[-1],
-                                'status': 'error',
-                                'reason': _('Canceled.')})
-                except Exception as e:
-                    # don't crash on websocket error
-                    logger.exception(e)
+        for report in self.reports.exclude(Q(method__in=uncancelable)
+                                           | Q(workflow_state__in=TASK_FINAL_STATES)):
+            report.cancel(username)
 
     def recoverable(self):
-        now = round(datetime.utcnow().timestamp())
         try:
-            return len([report for report in self.reports.all()
-                        if (int(report.started_at.strftime('%s')) if report.started_at else 0)
-                        + getattr(settings, 'TASK_RECOVER_DELAY', 60 * 60 * 24) > now]) != 0
-
+            return (self.reports
+                    .exclude(workflow_state__in=TASK_FINAL_STATES)
+                    .filter(queued_at__lt=datetime.now() - timedelta(seconds=settings.TASK_RECOVER_DELAY))
+                    .exists()
+                    )
         except KeyError:
             return True  # probably old school stored task
 
     def recover(self):
-        tasks_map = {  # map a task to a workflow state it should go back to if failed
-            "core.tasks.convert": (
-                self.WORKFLOW_STATE_CONVERTING,
-                self.WORKFLOW_STATE_CREATED,
-            ),
-            "core.tasks.segment": (
-                self.WORKFLOW_STATE_SEGMENTING,
-                self.WORKFLOW_STATE_CONVERTED,
-            ),
-            "core.tasks.transcribe": (
-                self.WORKFLOW_STATE_TRANSCRIBING,
-                self.WORKFLOW_STATE_SEGMENTED,
-            ),
-            "core.tasks.align": (
-                self.WORKFLOW_STATE_ALIGNING,
-                self.WORKFLOW_STATE_TRANSCRIBING,
-            ),
-        }
-        for task_name in tasks_map:
-            if self.workflow_state == tasks_map[task_name][0] and self.reports.filter(method=task_name).exists():
-                report = self.reports.filter(method=task_name).last()
-                report.error("error")
-                self.workflow_state = tasks_map[task_name][1]
-
-        self.save()
+        if self.recoverable():
+            running_tasks = self.reports.exclude(workflow_state__in=TASK_FINAL_STATES)
+            for task in running_tasks:
+                task.recover()
 
     def convert(self):
         if not getattr(settings, "ALWAYS_CONVERT", False):
             return
-
-        if self.workflow_state < self.WORKFLOW_STATE_CONVERTING:
-            self.workflow_state = self.WORKFLOW_STATE_CONVERTING
-            self.save()
 
         old_name = self.image.file.name
         filename, extension = os.path.splitext(old_name)
@@ -1208,9 +1108,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
 
             self.image = new_name.split(settings.MEDIA_ROOT)[1][1:]
             os.remove(old_name)
-
-        if self.workflow_state < self.WORKFLOW_STATE_CONVERTED:
-            self.workflow_state = self.WORKFLOW_STATE_CONVERTED
 
         self.save()
 
@@ -1244,9 +1141,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         """
         steps: lines regions masks
         """
-        self.workflow_state = self.WORKFLOW_STATE_SEGMENTING
-        self.save()
-
         if model:
             model_path = model.file.path
         else:
@@ -1319,7 +1213,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
 
         im.close()
 
-        self.workflow_state = self.WORKFLOW_STATE_SEGMENTED
         self.save()
         self.recalculate_ordering(read_direction=read_direction)
 
@@ -1394,7 +1287,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             if not self.max_avg_confidence or avg_line_confidence > self.max_avg_confidence:
                 self.max_avg_confidence = avg_line_confidence
 
-        self.workflow_state = self.WORKFLOW_STATE_TRANSCRIBING
         self.calculate_progress()
         self.save()
 
@@ -1419,7 +1311,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             raise AlreadyProcessingException
         tasks = []
 
-        if task_name == 'convert' or self.workflow_state < self.WORKFLOW_STATE_CONVERTED:
+        if task_name == 'convert':
             sig = convert.si(instance_pk=self.pk, **kwargs)
 
             if getattr(settings, 'THUMBNAIL_ENABLE', True):
