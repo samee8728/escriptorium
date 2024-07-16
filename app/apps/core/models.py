@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from glob import glob
 from os import makedirs, path
@@ -81,14 +82,31 @@ class CascadeUpdate():
     so that the most recent appears first in the UI.
     For example if a user changes a line transcription the dates of its Line, DocumentPart, Document and Project will be changed automatically.
     Avoid doing it for asynchronous processes doing a lot of queries (like import/export/training etc)
+    Note: we are not using signals for this because they are hard to invalidate (not thread safe)
     """
     cascade_to = NotImplementedError
+    _CASCADE_UPDATE_DISABLE = False
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        if celery_app.current_task is None:  # check if we are an asynchronous task
+        if (celery_app.current_task is None   # check if we are an asynchronous task
+                and not CascadeUpdate._CASCADE_UPDATE_DISABLE):  # disable cascade update for this whole process
             getattr(self, self.cascade_to).save()
+
+    @contextmanager
+    @staticmethod
+    def bypass():
+        """
+        allows to disable CascadeUpdate behavior from inside a code block:
+        with CascadeUpdate.bypass():
+            MyInstance.save()  # won't trigger cascade update
+        """
+        try:
+            CascadeUpdate._CASCADE_UPDATE_DISABLE = True
+            yield None
+        finally:
+            CascadeUpdate._CASCADE_UPDATE_DISABLE = False
 
 
 class Typology(ExportModelOperationsMixin("Typology"), models.Model):

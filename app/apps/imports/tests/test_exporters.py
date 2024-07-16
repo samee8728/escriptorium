@@ -7,7 +7,14 @@ from zipfile import ZipFile
 from django.test import override_settings
 from lxml import etree
 
-from core.models import Block, BlockType, DocumentPart, Line, LineTranscription
+from core.models import (
+    Block,
+    BlockType,
+    CascadeUpdate,
+    DocumentPart,
+    Line,
+    LineTranscription,
+)
 from core.tests.factory import CoreFactoryTestCase
 from escriptorium.test_settings import MEDIA_ROOT
 from imports.export import (
@@ -62,91 +69,94 @@ class ExportersTestCase(CoreFactoryTestCase):
         user = self.factory.make_user()
         doc = self.factory.make_document(owner=user)
         dt = datetime.datetime.fromisoformat("2022-01-01T00:00:00")
-        self.part = self.factory.make_part(document=doc)
-        self.part_xml_export_filename = f"{os.path.splitext(self.part.filename)[0]}.xml"
-        self.part_md_export_filename = (
-            f"{os.path.splitext(self.part.filename)[0]}.mARkdown"
-        )
-        self.part2 = self.factory.make_part(
-            document=doc,
-            image_asset="segmentation/default2.png",
-        )
-        DocumentPart.objects.update(created_at=dt, updated_at=dt)
-        self.part2_xml_export_filename = (
-            f"{os.path.splitext(self.part2.filename)[0]}.xml"
-        )
-        self.part2_md_export_filename = (
-            f"{os.path.splitext(self.part2.filename)[0]}.mARkdown"
-        )
-        self.all_parts_pks = [self.part.pk, self.part2.pk]
-        transcription = self.factory.make_transcription(document=doc)
 
-        title = BlockType.objects.create(id=1, name="title")
-        self.body = BlockType.objects.create(id=2, name="body")
-        signature = BlockType.objects.create(id=3, name="signature")
+        with CascadeUpdate.bypass():
+            self.part = self.factory.make_part(document=doc)
+            self.part_xml_export_filename = f"{os.path.splitext(self.part.filename)[0]}.xml"
 
-        # Creating content that will be exported
-        for index, part in enumerate([self.part, self.part2]):
-            title_block = Block.objects.create(
-                box=[[190, 25], [510, 65]],
-                document_part=part,
-                typology=title,
-                external_id=f"eSc_textblock_{index}1",
+            self.part_md_export_filename = (
+                f"{os.path.splitext(self.part.filename)[0]}.mARkdown"
             )
-            body_block = Block.objects.create(
-                box=[[90, 125], [560, 215]],
-                document_part=part,
-                typology=self.body,
-                external_id=f"eSc_textblock_{index}2",
+            self.part2 = self.factory.make_part(
+                document=doc,
+                image_asset="segmentation/default2.png",
             )
-            signature_block = Block.objects.create(
-                box=[[390, 245], [610, 275]],
-                document_part=part,
-                typology=signature,
-                external_id=f"eSc_textblock_{index}3",
+            DocumentPart.objects.update(created_at=dt, updated_at=dt)
+            self.part2_xml_export_filename = (
+                f"{os.path.splitext(self.part2.filename)[0]}.xml"
             )
+            self.part2_md_export_filename = (
+                f"{os.path.splitext(self.part2.filename)[0]}.mARkdown"
+            )
+            self.all_parts_pks = [self.part.pk, self.part2.pk]
+            transcription = self.factory.make_transcription(document=doc)
 
-            LineTranscription.objects.create(
-                transcription=transcription,
-                line=Line.objects.create(
-                    baseline=[[200, 45], [500, 45]],
-                    mask=[[200, 30], [500, 30], [500, 60], [200, 60]],
+            title = BlockType.objects.create(id=1, name="title")
+            self.body = BlockType.objects.create(id=2, name="body")
+            signature = BlockType.objects.create(id=3, name="signature")
+
+            # Creating content that will be exported
+            for index, part in enumerate([self.part, self.part2]):
+                title_block = Block.objects.create(
+                    box=[[190, 25], [510, 65]],
                     document_part=part,
-                    block=title_block,
-                    external_id=f"eSc_line_{index}1",
-                ),
-                content=CONTENTS[index].get("title"),
-                graphs=self.make_graphs(200, 45, 300, 15, CONTENTS[index].get("title"))
-            )
-            for i in range(3):
-                padding = 30 * i
+                    typology=title,
+                    external_id=f"eSc_textblock_{index}1",
+                )
+                body_block = Block.objects.create(
+                    box=[[90, 125], [560, 215]],
+                    document_part=part,
+                    typology=self.body,
+                    external_id=f"eSc_textblock_{index}2",
+                )
+                signature_block = Block.objects.create(
+                    box=[[390, 245], [610, 275]],
+                    document_part=part,
+                    typology=signature,
+                    external_id=f"eSc_textblock_{index}3",
+                )
+
                 LineTranscription.objects.create(
                     transcription=transcription,
                     line=Line.objects.create(
-                        baseline=[[100, 140 + padding], [550, 140 + padding]],
-                        mask=[
-                            [100, 130 + padding],
-                            [550, 130 + padding],
-                            [550, 150 + padding],
-                            [100, 150 + padding],
-                        ],
+                        baseline=[[200, 45], [500, 45]],
+                        mask=[[200, 30], [500, 30], [500, 60], [200, 60]],
                         document_part=part,
-                        block=body_block,
-                        external_id=f"eSc_line_{index}{2 + i}",
+                        block=title_block,
+                        external_id=f"eSc_line_{index}1",
                     ),
-                    content=CONTENTS[index].get("body"),
+                    content=CONTENTS[index].get("title"),
+                    graphs=self.make_graphs(200, 45, 300, 15, CONTENTS[index].get("title"))
                 )
-            LineTranscription.objects.create(
-                transcription=transcription,
-                line=Line.objects.create(
-                    baseline=[[400, 260], [600, 260]],
-                    mask=[[400, 250], [600, 250], [600, 270], [400, 270]],
-                    document_part=part,
-                    block=signature_block,
-                    external_id=f"eSc_line_{index}5",
-                ),
-                content=CONTENTS[index].get("signature"),
-            )
+                for i in range(3):
+                    padding = 30 * i
+                    LineTranscription.objects.create(
+                        transcription=transcription,
+                        line=Line.objects.create(
+                            baseline=[[100, 140 + padding], [550, 140 + padding]],
+                            mask=[
+                                [100, 130 + padding],
+                                [550, 130 + padding],
+                                [550, 150 + padding],
+                                [100, 150 + padding],
+                            ],
+                            document_part=part,
+                            block=body_block,
+                            external_id=f"eSc_line_{index}{2 + i}",
+                        ),
+                        content=CONTENTS[index].get("body"),
+                    )
+                LineTranscription.objects.create(
+                    transcription=transcription,
+                    line=Line.objects.create(
+                        baseline=[[400, 260], [600, 260]],
+                        mask=[[400, 250], [600, 250], [600, 270], [400, 270]],
+                        document_part=part,
+                        block=signature_block,
+                        external_id=f"eSc_line_{index}5",
+                    ),
+                    content=CONTENTS[index].get("signature"),
+                )
 
         self.all_regions_types = [title.pk, self.body.pk, signature.pk]
 
