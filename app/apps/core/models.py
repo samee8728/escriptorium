@@ -94,8 +94,8 @@ class CascadeUpdate():
                 and not CascadeUpdate._CASCADE_UPDATE_DISABLE):  # disable cascade update for this whole process
             getattr(self, self.cascade_to).save()
 
-    @contextmanager
     @staticmethod
+    @contextmanager
     def bypass():
         """
         allows to disable CascadeUpdate behavior from inside a code block:
