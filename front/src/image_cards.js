@@ -16,12 +16,6 @@ function openWizard(proc) {
     }
     // update selected count
     $("#selected-num", "#" + proc + "-wizard").text(selected_num);
-    // can't send more than one binarized image at a time
-    if (selected_num != 1) {
-        $("#id_bw_image").attr("disabled", true);
-    } else {
-        $("#id_bw_image").attr("disabled", false);
-    }
 
     // Reset the form
     $(".process-part-form", "#" + proc + "-wizard")
@@ -58,7 +52,6 @@ class partCard {
         this.image = part.image;
         this.filename = part.filename;
         this.image_file_size = part.image_file_size;
-        this.bw_image = part.bw_image;
         this.workflow = part.workflow;
         this.task_ids = {}; // helps preventing card status race conditions
         this.progress = part.transcription_progress;
@@ -115,7 +108,6 @@ class partCard {
         this.editButton = $(".js-edit", this.$element);
         this.cancelTasksButton = $(".js-cancel", this.$element);
         this.convertIcon = $(".js-compressing", this.$element);
-        this.binarizedButton = $(".js-binarized", this.$element);
         this.segmentedButton = $(".js-segmented", this.$element);
         this.transcribeButton = $(".js-trans-progress", this.$element);
         this.alignButton = $(".js-align", this.$element);
@@ -157,13 +149,6 @@ class partCard {
         );
 
         if (cpuMinutesLeft !== "False") {
-            this.binarizedButton.click(
-                $.proxy(function (ev) {
-                    this.select();
-                    partCard.refreshSelectedCount();
-                    openWizard("binarize");
-                }, this),
-            );
             this.segmentedButton.click(
                 $.proxy(function (ev) {
                     this.select();
@@ -262,7 +247,6 @@ class partCard {
     inQueue() {
         return (
             (this.workflow["convert"] == "pending" ||
-                this.workflow["binarize"] == "pending" ||
                 this.workflow["segment"] == "pending" ||
                 this.workflow["transcribe"] == "pending" ||
                 this.workflow["align"] == "pending") &&
@@ -273,7 +257,6 @@ class partCard {
     working() {
         return (
             this.workflow["convert"] == "ongoing" ||
-            this.workflow["binarize"] == "ongoing" ||
             this.workflow["segment"] == "ongoing" ||
             this.workflow["transcribe"] == "ongoing" ||
             this.workflow["align"] == "ongoing"
@@ -283,7 +266,6 @@ class partCard {
     isCancelable() {
         const workflows = [
             this.workflow["align"],
-            this.workflow["binarize"],
             this.workflow["segment"],
             this.workflow["transcribe"],
         ];
@@ -312,7 +294,6 @@ class partCard {
     updateWorkflowIcons() {
         var map = [
             ["convert", this.convertIcon],
-            ["binarize", this.binarizedButton],
             ["segment", this.segmentedButton],
             ["transcribe", this.transcribeButton],
             ["align", this.alignButton],
@@ -800,10 +781,6 @@ export function bootImageCards(
 
     $(".js-proc-selected").click(function (ev) {
         openWizard($(ev.target).data("proc"));
-    });
-
-    $("#process-part-form-binarize #id_threshold").on("input", function () {
-        $(this).attr("title", this.value);
     });
 
     $("#process-part-form-transcribe #id_model").on("change", function (ev) {

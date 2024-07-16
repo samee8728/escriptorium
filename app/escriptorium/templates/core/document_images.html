@@ -115,17 +115,6 @@
     {% endwith %}
     {% endif %}
     <button
-      id="binarize-selected"
-      class="btn btn-sm btn-primary mr-1 ml-auto js-proc-selected"
-      data-proc="binarize"
-      {% if not has_cpu_minutes_left %}
-        disabled
-        title="{% trans "You don't have any CPU minutes left" %}"
-      {% else %}
-        title="{% trans 'Binarize selected images.' %}"
-      {% endif %}
-    ><i class="fas fa-adjust mr-1"></i>{% trans "Binarize" %}</button>
-    <button
       id="segment-selected"
       class="btn btn-sm btn-primary mr-1 js-proc-selected"
       data-proc="segment"
@@ -187,14 +176,6 @@
       <div class="d-flex mt-2">
         <span class="js-compressing mr-2" data-title="{% trans 'Compressing' %}"><i class="fas fa-compress-arrows-alt"></i></span>
         <span
-          class="btn proc js-binarized {% if not has_cpu_minutes_left %}disabled{% endif %}"
-          {% if not has_cpu_minutes_left %}
-            data-title="{% trans "You don't have any CPU minutes left" %}"
-          {% else %}
-            data-title="{% trans 'Binarize' %}"
-          {% endif %}
-        ><i class="fas fa-adjust"></i></span>
-        <span
           class="btn proc ml-2 js-segmented {% if not has_cpu_minutes_left %}disabled{% endif %}"
           {% if not has_cpu_minutes_left %}
             data-title="{% trans "You don't have any CPU minutes left" %}"
@@ -234,7 +215,6 @@
 {% include 'core/wizards/import_pdf.html' with proc='import-pdf' %}
 {% include 'core/wizards/import_mets.html' with proc='import-mets' %}
 {% include 'core/wizards/export.html' with proc='export' %}
-{% include 'core/wizards/binarize.html' with proc='binarize' %}
 {% include 'core/wizards/segment.html' with proc='segment' %}
 {% include 'core/wizards/segtrain.html' with proc='segtrain' %}
 {% include 'core/wizards/train.html' with proc='train' %}
@@ -253,6 +233,7 @@
 <script>
   $(document).ready(function() {
     // join the ws room
+    bootWebsocket();
     joinDocumentRoom('{{document.pk}}');
     bootImageCards(DOCUMENT_ID, '{{has_disk_storage_left}}', '{{has_cpu_minutes_left}}', {{document.show_confidence_viz|lower}});
     bootLazyload();

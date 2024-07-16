@@ -39,6 +39,30 @@
                     </template>
                 </VDropdown>
 
+                <!-- calculate masks -->
+                <VDropdown
+                    v-if="!hasMasks && lines.length > 0"
+                    class="new-section"
+                    theme="escr-tooltip-small"
+                    placement="bottom"
+                    :distance="8"
+                    :triggers="['hover']"
+                >
+                    <EscrButton
+                        aria-label="calculate masks"
+                        color="primary"
+                        :on-click="processLines"
+                        :disabled="disabled"
+                    >
+                        <template #button-icon>
+                            <i class="fas fa-thumbs-up" />
+                        </template>
+                    </EscrButton>
+                    <template #popper>
+                        Calculate masks
+                    </template>
+                </VDropdown>
+
                 <!-- undo/redo -->
                 <VDropdown
                     id="undo"
@@ -110,6 +134,7 @@
 </template>
 
 <script>
+import { mapState, mapGetters } from "vuex";
 import DetachableMixin from "./DetachableMixin.vue";
 import DetachableToolbar from "./DetachableToolbar.vue";
 import EditorToolbar from "../EditorToolbar/EditorToolbar.vue";
@@ -205,8 +230,16 @@ export default {
             type: Number,
             required: true,
         },
+        processLines: {
+            type: Function,
+            required: true,
+        },
     },
     computed: {
+        ...mapState({
+            "lines": (state) => state.lines.all,
+        }),
+        ...mapGetters("lines", ["hasMasks"]),
         /**
          * Get objects for the three modes (lines, regions, masks)
          */

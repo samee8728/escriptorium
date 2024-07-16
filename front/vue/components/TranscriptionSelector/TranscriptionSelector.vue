@@ -37,7 +37,7 @@
                             color="link-primary"
                             size="small"
                             :on-click="selectAll"
-                            :disabled="comparedTranscriptions.length === allTranscriptions.length"
+                            :disabled="comparedTranscriptions.length === allTranscriptionsSorted.length"
                         />
                         <EscrButton
                             label="Select None"
@@ -102,7 +102,7 @@ export default {
          * Sort the list of all transcriptions by PK
          */
         allTranscriptionsSorted() {
-            return this.allTranscriptions.toSorted((a, b) => {
+            return this.allTranscriptions.filter((t) => !t.archived).toSorted((a, b) => {
                 return parseInt(a.pk) - parseInt(b.pk);
             });
         },
@@ -129,7 +129,7 @@ export default {
          * Select all transcriptions for comparison
          */
         selectAll() {
-            const allPks = this.allTranscriptions.map((transcription) => {
+            const allPks = this.allTranscriptionsSorted.map((transcription) => {
                 return parseInt(transcription.pk);
             });
             this.setComparedTranscriptions(allPks);

@@ -116,6 +116,7 @@ class ExportersTestCase(CoreFactoryTestCase):
                     external_id=f"eSc_line_{index}1",
                 ),
                 content=CONTENTS[index].get("title"),
+                graphs=self.make_graphs(200, 45, 300, 15, CONTENTS[index].get("title"))
             )
             for i in range(3):
                 padding = 30 * i
@@ -163,11 +164,25 @@ class ExportersTestCase(CoreFactoryTestCase):
     def tearDown(self):
         shutil.rmtree(MEDIA_ROOT)
 
+    def make_graphs(self, baseline_x, baseline_y, baseline_w, line_h, content):
+        char_width = round(baseline_w / len(content), 1)
+        return [{
+            'c': char,
+            'poly': [
+                [round(baseline_x + index * char_width), baseline_y],
+                [round(baseline_x + index * char_width), baseline_y + line_h],
+                [round(baseline_x + index * char_width + baseline_w), baseline_y],
+                [round(baseline_x + index * char_width + baseline_w), baseline_y + line_h]
+            ],
+            'confidence': 1.0
+        } for index, char in enumerate(content)]
+
     def test_text_exporter_render(self, timezone_mock):
         exporter = TextExporter(
             self.all_parts_pks,
             self.all_regions_types,
             self.include_images,
+            False,
             *self.params,
         )
         exporter.render()
@@ -180,7 +195,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_text_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = TextExporter(
-            parts_pk, self.all_regions_types, self.include_images, *self.params
+            parts_pk,
+            self.all_regions_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -192,7 +211,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_text_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = TextExporter(
-            self.all_parts_pks, region_types, self.include_images, *self.params
+            self.all_parts_pks,
+            region_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -208,6 +231,7 @@ class ExportersTestCase(CoreFactoryTestCase):
             self.all_parts_pks,
             self.all_regions_types,
             self.include_images,
+            False,
             *self.params,
         )
         exporter.render()
@@ -233,7 +257,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_pagexml_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = PageXMLExporter(
-            parts_pk, self.all_regions_types, self.include_images, *self.params
+            parts_pk,
+            self.all_regions_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -251,7 +279,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_pagexml_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = PageXMLExporter(
-            self.all_parts_pks, region_types, self.include_images, *self.params
+            self.all_parts_pks,
+            region_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -276,7 +308,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_pagexml_exporter_render_with_images(self, timezone_mock):
         include_images = True
         exporter = PageXMLExporter(
-            self.all_parts_pks, self.all_regions_types, include_images, *self.params
+            self.all_parts_pks,
+            self.all_regions_types,
+            include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -304,11 +340,40 @@ class ExportersTestCase(CoreFactoryTestCase):
                 "mets_with_images.xml"
             ))
 
+    def test_pagexml_exporter_with_graphs(self, timezone_mock):
+        exporter = PageXMLExporter(
+            self.all_parts_pks,
+            self.all_regions_types,
+            False,
+            True,
+            *self.params
+        )
+        exporter.render()
+
+        with ZipFile(exporter.filepath, "r") as archive:
+            self.assertListEqual(
+                archive.namelist(),
+                [self.part_xml_export_filename, self.part2_xml_export_filename, "METS.xml"],
+            )
+            self.assertEqual(*format_xml_contents(
+                archive.read(self.part_xml_export_filename),
+                "pagexml_export_with_graphs_part1.xml"
+            ))
+            self.assertEqual(*format_xml_contents(
+                archive.read(self.part2_xml_export_filename),
+                "pagexml_export_with_graphs_part2.xml"
+            ))
+            self.assertEqual(*format_xml_contents(
+                archive.read("METS.xml"),
+                "mets_without_images.xml"
+            ))
+
     def test_alto_exporter_render(self, timezone_mock):
         exporter = AltoExporter(
             self.all_parts_pks,
             self.all_regions_types,
             self.include_images,
+            False,
             *self.params,
         )
         exporter.render()
@@ -334,7 +399,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_alto_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = AltoExporter(
-            parts_pk, self.all_regions_types, self.include_images, *self.params
+            parts_pk,
+            self.all_regions_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -352,7 +421,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_alto_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = AltoExporter(
-            self.all_parts_pks, region_types, self.include_images, *self.params
+            self.all_parts_pks,
+            region_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -377,7 +450,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_alto_exporter_render_with_images(self, timezone_mock):
         include_images = True
         exporter = AltoExporter(
-            self.all_parts_pks, self.all_regions_types, include_images, *self.params
+            self.all_parts_pks,
+            self.all_regions_types,
+            include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -405,12 +482,41 @@ class ExportersTestCase(CoreFactoryTestCase):
                 "mets_with_images.xml"
             ))
 
+    def test_alto_exporter_with_graphs(self, timezone_mock):
+        exporter = AltoExporter(
+            self.all_parts_pks,
+            self.all_regions_types,
+            self.include_images,
+            True,
+            *self.params,
+        )
+        exporter.render()
+
+        with ZipFile(exporter.filepath, "r") as archive:
+            self.assertListEqual(
+                archive.namelist(),
+                [self.part_xml_export_filename, self.part2_xml_export_filename, "METS.xml"],
+            )
+            self.assertEqual(*format_xml_contents(
+                archive.read(self.part_xml_export_filename),
+                "alto_export_with_graphs_part1.xml"
+            ))
+            self.assertEqual(*format_xml_contents(
+                archive.read(self.part2_xml_export_filename),
+                "alto_export_with_graphs_part2.xml"
+            ))
+            self.assertEqual(*format_xml_contents(
+                archive.read("METS.xml"),
+                "mets_without_images.xml"
+            ))
+
     @override_settings(VERSION_DATE="1.0.0-testing")
     def test_openiti_markdown_exporter_render(self, timezone_mock):
         exporter = OpenITIMARkdownExporter(
             self.all_parts_pks,
             self.all_regions_types,
             self.include_images,
+            False,
             *self.params,
         )
         exporter.render()
@@ -437,7 +543,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_openiti_markdown_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = OpenITIMARkdownExporter(
-            parts_pk, self.all_regions_types, self.include_images, *self.params
+            parts_pk,
+            self.all_regions_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -454,7 +564,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_openiti_markdown_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = OpenITIMARkdownExporter(
-            self.all_parts_pks, region_types, self.include_images, *self.params
+            self.all_parts_pks,
+            region_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -482,7 +596,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_openiti_markdown_exporter_render_with_images(self, timezone_mock):
         include_images = True
         exporter = OpenITIMARkdownExporter(
-            self.all_parts_pks, self.all_regions_types, include_images, *self.params
+            self.all_parts_pks,
+            self.all_regions_types,
+            include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -515,6 +633,7 @@ class ExportersTestCase(CoreFactoryTestCase):
             self.all_parts_pks,
             self.all_regions_types,
             self.include_images,
+            False,
             *self.params,
         )
         exporter.render()
@@ -537,7 +656,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_tei_xml_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = TEIXMLExporter(
-            parts_pk, self.all_regions_types, self.include_images, *self.params
+            parts_pk,
+            self.all_regions_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -552,7 +675,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_tei_xml_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = TEIXMLExporter(
-            self.all_parts_pks, region_types, self.include_images, *self.params
+            self.all_parts_pks,
+            region_types,
+            self.include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -580,7 +707,11 @@ class ExportersTestCase(CoreFactoryTestCase):
     def test_tei_xml_exporter_render_with_images(self, timezone_mock):
         include_images = True
         exporter = TEIXMLExporter(
-            self.all_parts_pks, self.all_regions_types, include_images, *self.params
+            self.all_parts_pks,
+            self.all_regions_types,
+            include_images,
+            False,
+            *self.params
         )
         exporter.render()
 
@@ -622,6 +753,7 @@ class ExportersTestCase(CoreFactoryTestCase):
             [self.part.pk],
             ['Orphan'],
             False,  # include_images
+            False,
             *self.params,
         )
         exporter.render()
@@ -657,6 +789,7 @@ class ExportersTestCase(CoreFactoryTestCase):
             [self.part.pk],
             ['Undefined'],
             False,  # include_images
+            False,
             *self.params,
         )
         exporter.render()

@@ -60,6 +60,7 @@ export default {
         }
     },
     created() {
+        // intercept all websocket messages
         const scheme = location.protocol === "https:" ? "wss:" : "ws:";
         const msgSocket = new ReconnectingWebSocket(`${scheme}//${window.location.host}/ws/notif/`);
         msgSocket.maxReconnectAttempts = 3;

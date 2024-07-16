@@ -68,9 +68,6 @@ export const mutations = {
     reset(state) {
         assign(state, initialState());
     },
-    setLoaded(state, loaded) {
-        state.loaded = loaded;
-    },
 };
 
 export const actions = {
@@ -148,9 +145,6 @@ export const actions = {
     // save part changes from the modal form
     async savePartChanges({ commit, rootState, state }) {
         if (rootState?.forms?.elementDetails) {
-            // start loading
-            commit("setLoaded", false);
-
             // get element details form data
             const { comments, metadata, name, typology } =
                 rootState.forms.elementDetails;

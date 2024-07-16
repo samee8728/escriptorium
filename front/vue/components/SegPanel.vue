@@ -196,6 +196,7 @@
             :on-reverse="onReverse"
             :on-undo="undo"
             :panel-index="panelIndex"
+            :process-lines="processLines"
             :selected-type="selectedType"
             :selection-is-linked="selectionIsLinked"
             :toggle-tool="onToggleTool"
@@ -725,14 +726,15 @@ export default Vue.extend({
             "keyup",
             function (ev) {
                 if (!this.blockShortcuts && ev.ctrlKey) {
-                    if (ev.key == "z") this.undo();
-                    if (ev.key == "y") this.redo();
+                    if (ev.key.toLowerCase() == "z") this.undo();
+                    if (ev.key.toLowerCase() == "y") this.redo();
                 }
             }.bind(this)
         );
     },
     methods: {
         ...mapActions("globalTools", ["setActiveTool", "toggleTool"]),
+        ...mapActions("alerts", ["add"]),
         toggleBinary(ev) {
             if (this.colorMode == "color") this.colorMode = "binary";
             else this.colorMode = "color";
@@ -1048,8 +1050,15 @@ export default Vue.extend({
         },
 
         async processLines(ev) {
-            ev.target.disabled = true;
-            await this.$store.dispatch("lines/recalculateMasks");
+            ev.currentTarget.disabled = true;
+            try {
+                await this.$store.dispatch("lines/recalculateMasks");
+                if (!this.legacyModeEnabled)
+                    this.add({ color: "text", message: "Mask calculation queued" });
+            } catch (err) {
+                if (!this.legacyModeEnabled)
+                    this.add({ color: "alert", message: "Error calculating masks" });
+            }
         },
 
         async recalculateOrdering(ev) {

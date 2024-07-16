@@ -340,6 +340,8 @@ export default {
                     return VisuPanel;
                 case "diplomatic":
                     return DiploPanel;
+                case "source":
+                    return SourcePanel;
             }
         }
     }

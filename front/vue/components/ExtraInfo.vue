@@ -65,7 +65,7 @@ export default {
     },
     async created() {
         document.addEventListener("keyup", async function(event) {
-            if (event.altKey && event.key == "g") {
+            if (event.altKey && event.key.toLowerCase() == "g") {
                 $("#gotoModal").modal("show");
             }
         });

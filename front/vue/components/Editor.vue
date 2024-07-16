@@ -48,11 +48,16 @@
             :on-cancel="closeDeleteTranscriptionModal"
             :on-confirm="deleteTranscription"
         />
+        <Alerts
+            v-if="!legacyModeEnabled"
+        />
     </div>
 </template>
 
 <script>
+import ReconnectingWebSocket from "reconnectingwebsocket";
 import { mapActions, mapState } from "vuex";
+import Alerts from "./Toast/ToastGroup.vue";
 import ConfirmModal from "./ConfirmModal/ConfirmModal.vue";
 import EditorNavigation from "./EditorNavigation/EditorNavigation.vue";
 import ElementDetailsModal from "./ElementDetailsModal/ElementDetailsModal.vue";
@@ -67,6 +72,7 @@ import "./Editor.css";
 export default {
     name: "EscrEditor",
     components: {
+        Alerts,
         ConfirmModal,
         ElementDetailsModal,
         EditorNavigation,
@@ -191,6 +197,23 @@ export default {
                 }
             }.bind(this));
         }.bind(this));
+
+        if (!this.legacyModeEnabled) {
+            // join document websocket room
+            const msg = `{"type": "join-room", "object_cls": "document", "object_pk": ${
+                this.documentId
+            }}`;
+            const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+            const msgSocket = new ReconnectingWebSocket(`${scheme}//${
+                window.location.host
+            }/ws/notif/`);
+            msgSocket.maxReconnectAttempts = 3;
+            // intercept all websocket messages
+            msgSocket.addEventListener("message", this.websocketListener);
+            msgSocket.addEventListener("open", function() {
+                msgSocket.send(msg);
+            });
+        }
     },
     methods: {
         ...mapActions("globalTools", [
@@ -205,6 +228,7 @@ export default {
         }),
         ...mapActions("document", ["saveOntologyChanges"]),
         ...mapActions("parts", ["savePartChanges"]),
+        ...mapActions("alerts", ["add"]),
         async onSavePart() {
             await this.savePartChanges();
             this.closeElementDetailsModal();
@@ -216,6 +240,39 @@ export default {
         async onSaveTranscriptions() {
             await this.saveTranscriptionsChanges();
             this.closeTranscriptionsModal();
+        },
+        websocketListener(e) {
+            const data = JSON.parse(e.data);
+            if (data.type == "message") {
+                // handle "message" type here, for display purposes
+                const message = data.text;
+                // map color to our color scheme
+                let color = "text";
+                const colorMap = {
+                    danger: "alert",
+                    success: "success",
+                };
+                if (Object.keys(colorMap).includes(data.level)) {
+                    color = colorMap[data.level];
+                }
+                // add links if necessary
+                if (data.links && data.links.length) {
+                    const actionLink = data.links[0].src;
+                    const actionLabel = data.links[0].text;
+                    this.add({ color, message, actionLink, actionLabel, delay: 60000 });
+                } else {
+                    this.add({ color, message });
+                }
+            } else if (data.type === "event" && data.name === "part:mask") {
+                // handle "event" type just for part:mask for mask recalculation
+                data.data.lines.forEach((lineData) => {
+                    let line = this.$store.state.lines.all.find((l) => l.pk == lineData.pk);
+                    if (line) {  // might have been deleted in the meantime
+                        this.$store.commit("lines/update", lineData)
+                    }
+                });
+                this.add({ color: "success", message: "Successfully calculated masks" });
+            }
         },
     }
 }

@@ -110,8 +110,24 @@
     max-width: 24px;
     max-height: 24px;
 }
-.escr-document-dashboard .escr-document-tasks ul > li .escr-spinner {
+.escr-document-dashboard .escr-document-tasks ul > li .escr-spinner,
+.escr-document-dashboard .escr-document-tasks ul > li [class^="escr-status"] {
     margin-right: 1rem;
+}
+.escr-document-tasks ul > li .escr-status--complete {
+    color: var(--secondary);
+}
+.escr-document-tasks ul > li .escr-status--warning {
+    color: var(--at-risk);
+}
+.escr-document-tasks ul > li .escr-status--error {
+    color: var(--alert);
+}
+.escr-document-tasks ul > li .escr-status--inactive {
+    color: var(--background2);
+}
+.escr-document-tasks ul > li .meta .timestamp {
+    text-align: right;
 }
 .escr-document-dashboard .escr-document-tasks ul > li .meta {
     max-width: calc(100% - 76px);

@@ -22,6 +22,14 @@
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
 
+    <script>
+      // set the dark-mode theme early to avoid unpleasant blinking.
+      const activeTheme = localStorage.getItem("user-theme");
+      if (activeTheme === "dark-mode") {
+          document.documentElement.className = "dark-mode";
+      }
+    </script>
+
     {% block styles %}
     <link href="{% static 'vendor.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'main.css' %}" rel="stylesheet" type="text/css">
@@ -188,7 +196,9 @@
     {% if user.is_authenticated %} {# no need to open a socket for anonymous users, bots etc #}
       <script>
         $(document).ready(function(){
-          bootWebsocket();
+          {% block legacy_alerts %}
+            bootWebsocket();
+          {% endblock %}
 
           $('#find-replace-button').on('click', function(ev) {
             $('#searchbar').attr('action', '{% url 'find-replace' %}');

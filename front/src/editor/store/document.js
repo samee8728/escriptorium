@@ -292,7 +292,7 @@ export const actions = {
             await createComponentTaxonomy({
                 documentId,
                 name,
-                allowedValues: values.split(","),
+                allowedValues: values ? values.split(",") : [],
             });
         } catch (err) {
             commit("setLoading", false);
@@ -332,7 +332,7 @@ export const actions = {
                 documentId,
                 pk,
                 name,
-                allowedValues: values.split(","),
+                allowedValues: values ? values.split(",") : [],
             });
         } catch (err) {
             commit("setLoading", false);

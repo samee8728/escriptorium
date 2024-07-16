@@ -15,6 +15,16 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+class TaskGroup(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    document = models.ForeignKey("core.Document", on_delete=models.CASCADE)
+    task = models.CharField(max_length=256)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class TaskReport(models.Model):
     WORKFLOW_STATE_QUEUED = 0
     WORKFLOW_STATE_STARTED = 1
@@ -28,11 +38,12 @@ class TaskReport(models.Model):
         (WORKFLOW_STATE_DONE, _("Finished")),
         (WORKFLOW_STATE_CANCELED, _("Canceled")),
     )
-
     workflow_state = models.PositiveSmallIntegerField(
         default=WORKFLOW_STATE_QUEUED,
         choices=WORKFLOW_STATE_CHOICES
     )
+    group = models.ForeignKey(TaskGroup, null=True, on_delete=models.SET_NULL)
+
     label = models.CharField(max_length=256)
     messages = models.TextField(blank=True)
 

@@ -5,6 +5,7 @@ import {
     moveDocumentPart,
     retrieveDocument,
     retrieveDocumentParts,
+    segmentDocument,
 } from "../../../src/api";
 import forms from "../util/initialFormState";
 
@@ -345,6 +346,30 @@ const actions = {
             commit("setLoading", { key: "images", loading: false });
         } catch (error) {
             commit("setLoading", { key: "images", loading: false });
+            dispatch("alerts/addError", error, { root: true });
+        }
+    },
+    /**
+     * Handle submitting the redraw masks modal.
+     */
+    async handleSubmitRedrawMasks({ commit, dispatch, rootState, state }) {
+        try {
+            await segmentDocument({
+                documentId: rootState.document.id,
+                steps: "masks",
+                parts: state.selectedParts || [],
+            });
+            commit("setSelectedParts", []);
+            // show toast alert on success
+            dispatch(
+                "alerts/add",
+                {
+                    color: "success",
+                    message: "Redraw masks queued successfully",
+                },
+                { root: true },
+            );
+        } catch (error) {
             dispatch("alerts/addError", error, { root: true });
         }
     },

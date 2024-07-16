@@ -6,20 +6,26 @@
         >
             <div
                 :class="{
-                    'escr-spinner': true,
-                    [`escr-spinner--${task.icon}`]: true,
+                    'escr-spinner': ['Queued', 'Initiated'].includes(task.label),
+                    [`escr-spinner--${task.icon}`]: ['Queued', 'Initiated'].includes(task.label),
+                    [`escr-status--${task.icon}`]: !['Queued', 'Initiated'].includes(task.label),
                 }"
                 role="status"
             >
+                <CheckCircleFilledIcon v-if="['complete', 'warning'].includes(task.icon)" />
+                <ErrorIcon v-else-if="task.icon === 'error'" />
+                <CanceledIcon v-else-if="task.label === 'Canceled'" />
                 <span class="sr-only">{{ task.status }}</span>
             </div>
             <div class="meta">
-                <span class="task-label">{{ task.label }}</span>
+                <span class="task-label">{{ task.method }}</span>
                 <span>{{ task.message }}</span>
-                <span>{{ task.status }} {{ task.timestamp }}</span>
+                <span class="timestamp">
+                    {{ task.label }} {{ task.timestamp }}
+                </span>
             </div>
             <EscrButton
-                v-if="[0, 1].includes(task.workflow_state)"
+                v-if="['Queued', 'Initiated'].includes(task.label)"
                 color="text"
                 size="small"
                 :on-click="() => handleCancel(task)"
@@ -34,68 +40,33 @@
 <script>
 import { mapActions, mapState } from "vuex";
 import CancelIcon from "../../components/Icons/CancelIcon/CancelIcon.vue";
+import CanceledIcon from "../../components/Icons/CanceledIcon/CanceledIcon.vue";
+// eslint-disable-next-line max-len
+import CheckCircleFilledIcon from "../../components/Icons/CheckCircleFilledIcon/CheckCircleFilledIcon.vue";
+import ErrorIcon from "../../components/Icons/ErrorIcon/ErrorIcon.vue";
 import EscrButton from "../../components/Button/Button.vue";
 
 export default {
     name: "EscrTaskDashboard",
-    components: { CancelIcon, EscrButton },
+    components: { CancelIcon, CanceledIcon, CheckCircleFilledIcon, ErrorIcon, EscrButton },
     computed: {
         ...mapState({
-            tasks: (state) => state.document.tasks,
+            taskGroups: (state) => state.document.tasks,
         }),
         taskStatuses() {
-            return this.tasks.slice(0, 3).map((task) => {
-                const taskStatus = {
-                    pk: task.pk,
-                    workflow_state: task.workflow_state,
-                };
-                switch (task.workflow_state) {
-                    case 0:
-                        taskStatus.icon = "inactive";
-                        taskStatus.status = "Queued";
-                        taskStatus.message = "Waiting...";
-                        taskStatus.timestamp = task.queued_at;
-                        break;
-                    case 1:
-                        taskStatus.icon = "secondary";
-                        taskStatus.status = "Initiated";
-                        taskStatus.message = "In Progress";
-                        taskStatus.timestamp = task.started_at;
-                        break;
-                    case 2:
-                        taskStatus.icon = "danger";
-                        taskStatus.status = "Error";
-                        taskStatus.message = "Error";
-                        taskStatus.timestamp = task.done_at;
-                        break;
-                    case 3:
-                        taskStatus.icon = "secondary-inactive";
-                        taskStatus.status = "Completed";
-                        taskStatus.message = "Complete";
-                        taskStatus.timestamp = task.done_at;
-                        break;
-                    case 4:
-                        taskStatus.icon = "inactive";
-                        taskStatus.status = "Canceled";
-                        taskStatus.message = "Canceled";
-                        taskStatus.timestamp = task.done_at;
-                        break;
-                    default:
-                        break;
-                }
-                const options = {
-                    year: "numeric",
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                };
+            return this.taskGroups.slice(0, 3).map((taskGroup) => {
+                const { tasks, method } = taskGroup;
+                const taskStatus = this.getWorkflowStatus(tasks, method);
+                // convert timestamp date to string
                 taskStatus.timestamp = taskStatus.timestamp
-                    ? new Date(taskStatus.timestamp).toLocaleString(undefined, options)
+                    ? new Date(taskStatus.timestamp).toLocaleString(undefined, {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                    })
                     : "";
-                taskStatus.label = task.document_part
-                    ? `${task.label.split(" ")[0]} ${task.document_part}`
-                    : task.label;
                 return taskStatus;
             });
         },
@@ -105,6 +76,75 @@ export default {
         handleCancel(task) {
             this.selectTask(task);
             this.openModal("cancelWarning");
+        },
+        /**
+         * Convert the task group into a single status object, which should match
+         * one of the frontend statuses: Queued, Initiated, Error, Completed, Canceled.
+         * It will also specify the status icon, a label for the type of task,
+         * a brief message about the current status, and which timestamp to use.
+         */
+        getWorkflowStatus(states, method) {
+            let taskStatus = {};
+            // get a total count of all states
+            const totalCount = states.reduce((acc, t) => acc + t.count, 0);
+            // generate a string for the task label (method)
+            let m = method.split(".").pop();
+            if (["segment", "transcribe"].includes(m)) {
+                // these two taskgroups have one task per element
+                m = `${m} ${totalCount} Element`;
+                if (totalCount > 1) m = `${m}s`;
+            }
+            if (m === "segtrain") {
+                taskStatus.method = "Train Segmenter Model";
+            } else if (m === "train") {
+                taskStatus.method = "Train Recognizer Model";
+            } else {
+                taskStatus.method = m.charAt(0).toUpperCase() + m.slice(1);
+            }
+            // convert to an object where keys are workflow state
+            const stateObj = states.reduce(
+                (obj, item) => (obj[item.workflow_state] = item, obj), {}
+            );
+            // get icon, message, label, timestamp depending on mixed state
+            if (stateObj["Canceled"]) {
+                taskStatus.label = "Canceled";
+                taskStatus.icon = "inactive";
+                taskStatus.message = "Canceled";
+                taskStatus.timestamp = stateObj["Canceled"].done_at;
+            } else if (stateObj["Finished"]) {
+                taskStatus.label = "Completed";
+                taskStatus.icon = "complete";
+                taskStatus.message = `${stateObj["Finished"].count}/${totalCount} complete`;
+                taskStatus.timestamp = stateObj["Finished"].done_at;
+                if (stateObj["Queued"] || stateObj["Running"]) {
+                    taskStatus.label = "Initiated";
+                    taskStatus.icon = "secondary";
+                    taskStatus.timestamp = stateObj["Queued"]
+                        ? stateObj["Queued"].queued_at
+                        : stateObj["Running"].started_at;
+                } else if (stateObj["Crashed"]) {
+                    taskStatus.message = `Completed, ${
+                        stateObj["Crashed"].count
+                    }/${totalCount} errors`;
+                    taskStatus.icon = "warning";
+                }
+            } else if (stateObj["Running"]) {
+                taskStatus.label = "Initiated";
+                taskStatus.icon = "secondary";
+                taskStatus.message = "In progress";
+                taskStatus.timestamp = stateObj["Running"].started_at;
+            } else if (stateObj["Queued"]) {
+                taskStatus.label = "Queued";
+                taskStatus.icon = "inactive";
+                taskStatus.message = "Waiting...";
+                taskStatus.timestamp = stateObj["Queued"].queued_at;
+            } else if (stateObj["Crashed"]) {
+                taskStatus.label = "Completed";
+                taskStatus.icon = "error";
+                taskStatus.message = "Error";
+                taskStatus.timestamp = stateObj["Crashed"].done_at;
+            }
+            return taskStatus;
         },
     }
 }

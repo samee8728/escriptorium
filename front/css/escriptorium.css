@@ -560,6 +560,7 @@ i.panel-icon {
     z-index: 3;
     display: none;
     opacity: 90%;
+    color: black;
 }
 
 #trans-modal .modal-content {

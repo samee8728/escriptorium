@@ -586,7 +586,10 @@ class XMLParser(ParserDocument):
     def get_transcription_content(self, lineTag):
         raise NotImplementedError
 
-    def make_transcription(self, line, lineTag, content, avg_confidence=None, user=None):
+    def get_glyphs(self, lineTag):
+        raise NotImplementedError
+
+    def make_transcription(self, line, lineTag, content, graphs=None, avg_confidence=None, user=None):
         try:
             # lazily creates the Transcription on the fly if need be cf transcription() property
             lt = LineTranscription.objects.get(
@@ -609,6 +612,10 @@ class XMLParser(ParserDocument):
             lt.content = content
             if avg_confidence:
                 lt.avg_confidence = avg_confidence
+
+            if graphs:
+                lt.graphs = graphs
+
             lt.save()
 
             # update the avg confidence across the whole transcription
@@ -718,19 +725,20 @@ class XMLParser(ParserDocument):
 
                             # needs to be done after line is created!
                             tc = self.get_transcription_content(lineTag)
+                            gs = self.get_graphs(lineTag)
                             ac = self.get_avg_confidence(lineTag)
                             if ac:
                                 self.all_line_confidences.append(ac)
                                 part_line_confidences.append(ac)
                             if tc:
-                                self.make_transcription(line, lineTag, tc, avg_confidence=ac, user=user)
+                                self.make_transcription(line, lineTag, tc, graphs=gs, avg_confidence=ac, user=user)
+
                     if part_line_confidences:
                         # if applicable, store max avg confidence / best transcription on document part
                         part_avg_confidence = mean(part_line_confidences)
                         if not max_avg_confidence or (max_avg_confidence and part_avg_confidence > max_avg_confidence):
                             part.max_avg_confidence = part_avg_confidence
 
-                # TODO: store glyphs too
                 logger.info("Uncompressed and parsed %s (%i page(s), %i block(s), %i line(s))" % (self.file.name, n_pages, n_blocks, n_lines))
                 part.calculate_progress()
                 yield part
@@ -834,7 +842,8 @@ The ALTO file should contain a Description/sourceImageInformation/fileName tag f
             strings = lineTag.findall("String", self.root.nsmap)
             last_segment = strings[-1]
             line.baseline = [(int(float(e.get('HPOS'))), int(float(e.get('VPOS')))) for e in strings]
-            line.baseline.append((int(float(last_segment.get('HPOS'))) + int(float(last_segment.get('WIDTH'))),
+            line.baseline.append((int(float(last_segment.get('HPOS')))
+                                  + int(float(last_segment.get('WIDTH'))),
                                   int(float(last_segment.get('VPOS')))))
 
         polygon = lineTag.find("Shape/Polygon", self.root.nsmap)
@@ -874,6 +883,17 @@ The ALTO file should contain a Description/sourceImageInformation/fileName tag f
         return " ".join(
             [e.get("CONTENT") for e in lineTag.findall("String", self.root.nsmap)]
         )
+
+    def get_graphs(self, lineTag):
+        graphs = []
+        for e in lineTag.findall("Glyph", self.root.nsmap):
+            coords = tuple(map(float, e.find('Polygon').get("POINTS").strip().split(" ")))
+            graphs.append({
+                'c': e.get("CONTENT"),
+                'poly': tuple(zip(coords[::2], coords[1::2])),
+                'confidence': e.get("GC")
+            })
+        return graphs
 
     def get_avg_confidence(self, lineTag):
         # WC attribute (a float between 0.0 and 1.0) is used for confidence
@@ -1006,6 +1026,16 @@ The PAGE file should contain an attribute imageFilename in Page tag for matching
                     for e in lineTag.findall("TextEquiv/Unicode", self.root.nsmap)
                 ]
             )
+
+    def get_graphs(self, lineTag):
+        graphs = []
+        for e in lineTag.findall("Word/Glyph", self.root.nsmap):
+            graphs.append({
+                'c': e.find("TextEquiv/Unicode", self.root.nsmap).text,
+                'poly': self.clean_coords(e.find('Coords', self.root.nsmap)),
+                'confidence': e.find("TextEquiv", self.root.nsmap).get("conf")
+            })
+        return graphs
 
     def get_avg_confidence(self, lineTag):
         # PAGE XML can have content for each word inside a word tag or the whole line in textline tag

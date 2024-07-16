@@ -178,12 +178,8 @@ export default Vue.extend({
 
             lineHeight = Math.max(Math.round(lineHeight), 5) * 0.3;
 
-            let ratio = 1/4;
-
+            let ratio = this.$parent.fontSizeRatio;
             this.$refs.textElement.setAttribute("font-size", String(lineHeight * (ratio)) + "px");
-
-            //return lineHeight+'px';
-            return 10+"px";
         },
         computeTextLength() {
             if (!this.line.currentTrans) return;

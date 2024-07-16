@@ -18,19 +18,27 @@
 {% endblock %}
 
 {% block scripts %}
-  {{ block.super }}
+    {{ block.super }}
 
-  <script>
-    $(document).ready(function() {
-       // join the ws room
-       joinDocumentRoom('{{document.pk}}');
-       bootHelp();
-    });
-  </script>
+    {% if request.user.legacy_mode %}
+        <script>
+            $(document).ready(function() {
+                // join the ws room
+                joinDocumentRoom('{{document.pk}}');
+                bootHelp();
+            });
+        </script>
+    {% endif %}
 
-  <script src="{% static 'editor.js' %}"></script>
+    <script src="{% static 'editor.js' %}"></script>
 {% endblock %}
 
+
+{% if not request.user.legacy_mode %}
+    {# hide legacy UI alerts #}
+    {% block legacy_alerts %}
+    {% endblock %}
+{% endif %}
 
 {% block extrastyle %}
     {% if not request.user.legacy_mode %}

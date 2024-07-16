@@ -151,6 +151,7 @@ class AlignFormTestCase(CoreFactoryTestCase):
         mock_task.assert_called_with(
             parts=parts_qs,
             user_pk=self.user.pk,
+            task_group_pk=align_form.task_group.pk,
             transcription_pk=self.transcription.pk,
             witness_pk=self.witness.pk,
             n_gram=2,
@@ -198,6 +199,7 @@ class AlignFormTestCase(CoreFactoryTestCase):
         mock_task.assert_called_with(
             parts=parts_qs,
             user_pk=self.user.pk,
+            task_group_pk=align_form.task_group.pk,
             transcription_pk=self.transcription.pk,
             witness_pk=self.witness.pk,
             n_gram=25,
@@ -223,6 +225,7 @@ class AlignFormTestCase(CoreFactoryTestCase):
         mock_task.assert_called_with(
             parts=parts_qs,
             user_pk=self.user.pk,
+            task_group_pk=align_form.task_group.pk,
             transcription_pk=self.transcription.pk,
             witness_pk=self.witness.pk,
             n_gram=25,

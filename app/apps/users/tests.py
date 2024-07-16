@@ -128,7 +128,7 @@ class InvitationTestCase(TestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9):
             response = self.client.post(url, {
                 'email': invitation.recipient_email,
                 'username': 'jimd',

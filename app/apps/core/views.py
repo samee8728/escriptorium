@@ -35,7 +35,6 @@ from elasticsearch import exceptions as es_exceptions
 
 from core.forms import (
     AlignForm,
-    BinarizeForm,
     DocumentForm,
     DocumentOntologyForm,
     DocumentShareForm,
@@ -668,7 +667,6 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         context['upload_form'] = UploadImageForm(document=self.object, user=self.request.user)
 
         # process forms
-        context['binarize_form'] = BinarizeForm(self.object, self.request.user)
         context['segment_form'] = SegmentForm(self.object, self.request.user)
         context['transcribe_form'] = TranscribeForm(self.object, self.request.user)
         context['align_form'] = AlignForm(self.object, self.request.user)
@@ -790,9 +788,7 @@ class DocumentPartsProcessAjax(LoginRequiredMixin, View):
                                 status=404, content_type="application/json")
 
         task = self.request.POST.get('task')
-        if task == 'binarize':
-            form_class = BinarizeForm
-        elif task == 'segment':
+        if task == 'segment':
             form_class = SegmentForm
         elif task == 'transcribe':
             form_class = TranscribeForm

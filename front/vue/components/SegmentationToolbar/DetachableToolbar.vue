@@ -166,6 +166,7 @@
                 placement="bottom"
                 :distance="8"
                 :triggers="['hover']"
+                :disabled="typeMenuOpen"
             >
                 <VMenu
                     theme="vertical-menu"
@@ -230,6 +231,7 @@
                 placement="bottom"
                 :distance="8"
                 :triggers="['hover']"
+                :disabled="deleteMenuOpen"
             >
                 <VMenu
                     theme="vertical-menu"
@@ -328,7 +330,7 @@
     </div>
 </template>
 <script>
-import { Dropdown as VDropdown, Menu as VMenu } from "floating-vue";
+import { Dropdown as VDropdown, Menu as VMenu, hideAllPoppers } from "floating-vue";
 import { mapState } from "vuex";
 import AttachToolbarIcon from "../Icons/AttachToolbarIcon/AttachToolbarIcon.vue";
 import ChangeTypeIcon from "../Icons/ChangeTypeIcon/ChangeTypeIcon.vue";
@@ -478,11 +480,11 @@ export default {
                     // if it's a number, and in the range of indices, select the type at that index
                     if (!isNaN(num) && num < types.length) {
                         this.clickSelectionType(types[num]);
-                    } else if (evt.key === "t") {
+                    } else if (evt.key.toLowerCase() === "t") {
                         this.closeTypeMenu();
                     }
                 } else {
-                    if (evt.key === "t" && this.hasSelection) {
+                    if (evt.key.toLowerCase() === "t" && this.hasSelection) {
                         this.openTypeMenu();
                     }
                 }

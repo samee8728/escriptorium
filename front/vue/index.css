@@ -150,7 +150,7 @@
     overflow: auto;
     width: 100%;
 }
-.escr-body main:has(.escr-vue-enabled) {
+.escr-body  {
     background-color: var(--background);
     color: var(--text1);
     min-height: 100vh;
@@ -334,6 +334,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) {
     border: none;
     max-width: 220px;
     font-size: 12px;
+    color: var(--text1);
 }
 .v-popper--theme-escr-tooltip-small .v-popper__inner {
     padding: 8px;
@@ -415,4 +416,63 @@ nav.escr-editor-nav .new-section.with-separator {
     height: 1rem;
     border-left: 1px solid var(--text3);
     padding-left: 0.5rem;
+}
+
+/* legacy UI alerts in new UI style */
+#alerts-container {
+    left: 6rem;
+    bottom: 2rem;
+    top: auto;
+    right: auto;
+}
+.alert {
+    font-family: "Noto Sans", "Resized Arabic", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    background-color: var(--background2);
+    color: var(--text1);
+    box-shadow: 0px 4px 4px var(--drop-shadow);
+    border-radius: 5px;
+    border-color: transparent;
+}
+.alert .close {
+    padding: 0.6rem;
+    color: var(--text1);
+}
+.alert a {
+    color: var(--text1);
+}
+.alert.alert-danger {
+    background-color: var(--alert);
+    color: var(--toast-text);
+    box-shadow: 0px 4px 4px var(--alert-focus);
+}
+.alert.alert-success {
+    background-color: var(--primary);
+    color: var(--toast-text);
+    box-shadow: 0px 4px 4px var(--primary-focus);
+}
+.alert.alert-danger .close:hover,
+.alert.alert-success .close:hover,
+.alert.alert-danger a,
+.alert.alert-success a {
+    color: var(--toast-text);
+}
+.alert p.additional {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+    display: inline-block !important;
+}
+p.additional:empty {
+    display: none !important;
+}
+.alert a {
+    display: block;
+    border: 1px solid var(--text1);
+    border-radius: 5px;
+    padding: 4.5px 10px;
+}
+.alert.alert-danger a,
+.alert.alert-success a {
+    border-color: var(--toast-text);
 }

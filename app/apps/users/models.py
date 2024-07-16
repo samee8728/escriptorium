@@ -26,7 +26,7 @@ class User(AbstractUser):
     )
     fields = models.ManyToManyField('ResearchField', blank=True)
     legacy_mode = models.BooleanField(
-        default=False,
+        default=True,
         help_text=_("Use the legacy version of the user interface. If unchecked, features that have not yet been ported to the new interface may become unavailable. Likewise, if checked, newer features may become unavailable."),
     )
 

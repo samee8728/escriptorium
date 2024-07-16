@@ -47,6 +47,7 @@ def create_task_reporting(sender, body, **kwargs):
     DocumentPart = apps.get_model('core', 'DocumentPart')
     OcrModel = apps.get_model('core', 'OcrModel')
     TaskReport = apps.get_model('reporting', 'TaskReport')
+    TaskGroup = apps.get_model('reporting', 'TaskGroup')
 
     if task_kwargs.get("user_pk"):
         try:
@@ -93,6 +94,10 @@ def create_task_reporting(sender, body, **kwargs):
                       .get(pk=task_kwargs["part_pks"][0]))
         document = first_part.document
 
+    task_group = None
+    if task_kwargs.get("task_group_pk"):
+        task_group = TaskGroup.objects.get(pk=task_kwargs.get("task_group_pk"))
+
     # Update the frontend display consequently
     update_client_state(task_kwargs, sender, "pending")
 
@@ -100,6 +105,7 @@ def create_task_reporting(sender, body, **kwargs):
     default_report_label = f"Report for celery task {task_id} of type {sender}"
     TaskReport.objects.create(
         user=user,
+        group=task_group,
         label=task_kwargs.get("report_label", default_report_label),
         document=document,
         document_part=part,

@@ -6,11 +6,7 @@ from os.path import basename, splitext
 from bootstrap.forms import BootstrapFormMixin
 from django import forms
 from django.conf import settings
-from django.core.validators import (
-    FileExtensionValidator,
-    MaxValueValidator,
-    MinValueValidator,
-)
+from django.core.validators import FileExtensionValidator
 from django.db.models import Q
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
@@ -18,7 +14,6 @@ from django.utils.translation import gettext_lazy as _
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib import vgsl
 from kraken.lib.exceptions import KrakenInvalidModelException
-from PIL import Image
 
 from core.models import (
     AnnotationComponent,
@@ -45,6 +40,7 @@ from core.search import (
     search_content_psql_regex,
     search_content_psql_word,
 )
+from reporting.models import TaskGroup
 from users.models import User
 
 logger = logging.getLogger(__name__)
@@ -602,6 +598,7 @@ class RegionTypesFormMixin(forms.Form):
 
 
 class DocumentProcessFormBase(forms.Form):
+    PROCESS_NAME = 'Not Implemented'
     CHECK_GPU_QUOTA = False
     CHECK_DISK_QUOTA = False
 
@@ -626,50 +623,16 @@ class DocumentProcessFormBase(forms.Form):
 
         return super().clean()
 
-
-class BinarizeForm(BootstrapFormMixin, DocumentProcessFormBase):
-    # binarizer = forms.ChoiceField(required=False,
-    #                               choices=BINARIZER_CHOICES,
-    #                               initial='kraken')
-
-    bw_image = forms.ImageField(required=False)
-    threshold = forms.FloatField(
-        required=False, initial=0.5,
-        validators=[MinValueValidator(0.1), MaxValueValidator(1)],
-        help_text=_('Increase it for low contrast documents, if the letters are not visible enough.'),
-        widget=forms.NumberInput(
-            attrs={'type': 'range', 'step': '0.05',
-                   'min': '0.1', 'max': '1'}))
-
-    def clean_bw_image(self):
-        img = self.cleaned_data.get('bw_image')
-        if not img:
-            return
-        if len(self.cleaned_data.get('parts')) != 1:
-            raise forms.ValidationError(_("Uploaded image with more than one selected image."))
-        # Beware: don't close the file here !
-        fh = Image.open(img)
-        if fh.mode not in ['1', 'L']:
-            raise forms.ValidationError(_("Uploaded image should be black and white."))
-        isize = (self.cleaned_data.get('parts')[0].image.width, self.parts[0].image.height)
-        if fh.size != isize:
-            raise forms.ValidationError(
-                _("Uploaded image should be the same size as original image {size}.").format(size=isize))
-        return img
-
     def process(self):
-        parts = self.cleaned_data.get('parts')
-        if len(parts) == 1 and self.cleaned_data.get('bw_image'):
-            self.parts[0].bw_image = self.cleaned_data['bw_image']
-            self.parts[0].save()
-        else:
-            for part in parts:
-                part.task('binarize',
-                          user_pk=self.user.pk,
-                          threshold=self.cleaned_data.get('threshold'))
+        self.task_group = TaskGroup.objects.create(
+            task=self.PROCESS_NAME,
+            created_by=self.user,
+            document=self.document)
 
 
 class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'segmentation'
+
     model = forms.ModelChoiceField(
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
         label=_("Model"),
@@ -713,6 +676,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
         ).distinct()
 
     def process(self):
+        super().process()
         model = self.cleaned_data.get('model')
 
         if model:
@@ -728,6 +692,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
         for part in self.cleaned_data.get('parts'):
             part.task('segment',
                       user_pk=self.user.pk,
+                      task_group_pk=self.task_group.pk,
                       steps=self.cleaned_data.get('segmentation_steps'),
                       text_direction=self.cleaned_data.get('text_direction'),
                       model_pk=model and model.pk or None,  # None means default model
@@ -735,6 +700,8 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
 
 
 class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'recognition'
+
     model = forms.ModelChoiceField(
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_RECOGNIZE))
     transcription = forms.ModelChoiceField(
@@ -757,6 +724,7 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
         )
 
     def process(self):
+        super().process()
         model = self.cleaned_data.get('model')
         transcription = self.cleaned_data.get('transcription')
 
@@ -784,12 +752,15 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
         for part in self.cleaned_data.get('parts'):
             part.task('transcribe',
                       user_pk=self.user.pk,
+                      task_group_pk=self.task_group.pk,
                       model_pk=model.pk,
                       transcription_pk=transcription and transcription.pk or None)
 
 
 class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixin):
     """Form to perform text alignment by passing a transcription and textual witness"""
+    PROCESS_NAME = 'alignment'
+
     transcription = forms.ModelChoiceField(
         queryset=Transcription.objects.filter(archived=False),
         required=True,
@@ -918,6 +889,8 @@ class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixi
 
     def process(self):
         """Instantiate or set the witness to use, then enqueue the task(s)"""
+        super().process()
+
         transcription = self.cleaned_data.get("transcription")
         witness_file = self.cleaned_data.get("witness_file")
         existing_witness = self.cleaned_data.get("existing_witness")
@@ -946,6 +919,7 @@ class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixi
         document.queue_alignment(
             parts=parts,
             user_pk=self.user.pk,
+            task_group_pk=self.task_group.pk,
             transcription_pk=transcription.pk,
             witness_pk=witness.pk,
             # handle empty strings, NoneType; allow some values that could be false
@@ -1007,6 +981,8 @@ class TrainMixin():
         return cleaned_data
 
     def process(self):
+        super().process()
+
         model = self.cleaned_data['model']
         if not model:
             model = OcrModel.objects.create(
@@ -1031,6 +1007,8 @@ class TrainMixin():
 
 
 class SegTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'segmentation training'
+
     model_name = forms.CharField(required=False)
     model = forms.ModelChoiceField(queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
                                    required=False)
@@ -1051,10 +1029,13 @@ class SegTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
         model = super().process()
         model.segtrain(self.document,
                        self.cleaned_data.get('parts'),
+                       task_group_pk=self.task_group.pk,
                        user=self.user)
 
 
 class RecTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'recognition training'
+
     model_name = forms.CharField(required=False)
     model = forms.ModelChoiceField(queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_RECOGNIZE),
                                    required=False)
@@ -1073,6 +1054,7 @@ class RecTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
         model = super().process()
         model.train(self.cleaned_data.get('parts'),
                     self.cleaned_data['transcription'],
+                    task_group_pk=self.task_group.pk,
                     user=self.user)
 
     def clean(self):

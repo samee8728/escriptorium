@@ -5,7 +5,7 @@ import os.path
 import bleach
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Min, Q
 from django.db.utils import IntegrityError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -45,7 +45,7 @@ from core.tasks import segment, segtrain, train, transcribe
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
 from imports.tasks import document_import
-from reporting.models import TaskReport
+from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
 
@@ -595,6 +595,31 @@ class DocumentTasksSerializer(serializers.ModelSerializer):
         return last_task.started_at
 
 
+class TaskGroupSerializer(serializers.ModelSerializer):
+    created_by = serializers.SerializerMethodField()
+    tasks = serializers.SerializerMethodField()
+    method = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TaskGroup
+        fields = ('pk', 'method', 'created_at', 'created_by', 'tasks')
+
+    def get_created_by(self, task_group):
+        return task_group.created_by.username if task_group.created_by else None
+
+    def get_tasks(self, task_group):
+        data = task_group.taskreport_set.values('workflow_state').annotate(queued_at=Min('queued_at'),
+                                                                           started_at=Min('started_at'),
+                                                                           done_at=Max('done_at'),
+                                                                           count=Count('*'))
+        for state in data:
+            state['workflow_state'] = dict(TaskReport.WORKFLOW_STATE_CHOICES)[state['workflow_state']]
+        return data
+
+    def get_method(self, task_group):
+        return task_group.taskreport_set.values_list('method').first()[0]
+
+
 class TaskReportSerializer(serializers.ModelSerializer):
     document_part = serializers.SerializerMethodField()
 
@@ -680,7 +705,6 @@ class PartSerializer(serializers.ModelSerializer):
     image = ImageField(required=False, thumbnails=['card', 'large'])
     image_file_size = serializers.IntegerField(required=False)
     filename = serializers.CharField(read_only=True)
-    bw_image = ImageField(thumbnails=['large'], required=False)
     workflow = serializers.JSONField(read_only=True)
     transcription_progress = serializers.IntegerField(read_only=True)
 
@@ -695,7 +719,6 @@ class PartSerializer(serializers.ModelSerializer):
             'image',
             'image_file_size',
             'original_filename',
-            'bw_image',
             'workflow',
             'order',
             'recoverable',
@@ -912,6 +935,7 @@ class OcrModelSerializer(serializers.ModelSerializer):
 
 
 class ProcessSerializerMixin():
+    PROCESS_NAME = 'Not Implemented'
     CHECK_GPU_QUOTA = False
     CHECK_DISK_QUOTA = False
 
@@ -932,8 +956,15 @@ class ProcessSerializerMixin():
                 raise serializers.ValidationError(_("You don't have any disk storage left."))
         return data
 
+    def process(self):
+        self.task_group = TaskGroup.objects.create(
+            task=self.PROCESS_NAME,
+            created_by=self.user,
+            document=self.document)
+
 
 class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'segmentation'
     STEPS_CHOICES = (
         ('both', _('Lines and regions')),
         ('lines', _('Lines Baselines and Masks')),
@@ -967,6 +998,7 @@ class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
 
     def process(self):
+        super().process()
         model = self.validated_data.get('model')
         parts = self.validated_data.get('parts') or self.document.parts.all()
 
@@ -984,6 +1016,7 @@ class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
             part.chain_tasks(
                 segment.si(instance_pk=part.pk,
                            user_pk=self.user.pk,
+                           task_group_pk=self.task_group.pk,
                            model_pk=model.pk if model else None,  # None means default model
                            steps=self.validated_data.get('steps'),
                            text_direction=self.validated_data.get('text_direction'),
@@ -992,6 +1025,7 @@ class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
 
 
 class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'segmentation training'
     parts = serializers.PrimaryKeyRelatedField(many=True,
                                                queryset=DocumentPart.objects.all())
     model = serializers.PrimaryKeyRelatedField(required=False,
@@ -1034,6 +1068,7 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         return data
 
     def process(self):
+        super().process()
         model = self.validated_data.get('model')
         override = self.validated_data.get('override')
 
@@ -1059,6 +1094,7 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
             ocr_model_document.save()
 
         segtrain.delay(model_pk=model.pk if model else None,
+                       task_group_pk=self.task_group.pk,
                        part_pks=[part.pk for part in self.validated_data.get('parts')],
                        document_pk=self.document.pk,
                        user_pk=self.user.pk)
@@ -1073,6 +1109,7 @@ class TextualWitnessSerializer(serializers.ModelSerializer):
 
 
 class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'recognition training'
     CHECK_GPU_QUOTA = True
     CHECK_DISK_QUOTA = True
 
@@ -1115,6 +1152,7 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         return data
 
     def process(self):
+        super().process()
         model = self.validated_data.get('model')
         override = self.validated_data.get('override')
 
@@ -1140,12 +1178,14 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
             ocr_model_document.save()
 
         train.delay(transcription_pk=self.validated_data['transcription'].pk,
+                    task_group_pk=self.task_group.pk,
                     model_pk=model.pk if model else None,
                     part_pks=[part.pk for part in self.validated_data.get('parts')],
                     user_pk=self.user.pk)
 
 
 class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'recognition'
     parts = serializers.PrimaryKeyRelatedField(many=True,
                                                queryset=DocumentPart.objects.all(),
                                                required=False)
@@ -1164,6 +1204,7 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
             document=self.document)
 
     def process(self):
+        super().process()
         model = self.validated_data.get('model')
         transcription = self.validated_data.get('transcription')
         parts = self.validated_data.get('parts') or self.document.parts.all()
@@ -1180,6 +1221,7 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
         for part in parts:
             part.chain_tasks(
                 transcribe.si(
+                    task_group_pk=self.task_group.pk,
                     transcription_pk=transcription.pk,
                     instance_pk=part.pk,
                     model_pk=model.pk,
@@ -1206,6 +1248,7 @@ class EditableMultipleChoiceField(serializers.MultipleChoiceField):
 
 
 class AlignSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'alignment'
     parts = serializers.PrimaryKeyRelatedField(many=True,
                                                queryset=DocumentPart.objects.all(),
                                                required=False)
@@ -1330,6 +1373,8 @@ class AlignSerializer(ProcessSerializerMixin, serializers.Serializer):
 
     def process(self):
         """Instantiate or set the witness to use, then enqueue the task(s)"""
+        super().process()
+
         transcription = self.validated_data.get("transcription")
         witness_file = self.validated_data.get("witness_file")
         existing_witness = self.validated_data.get("existing_witness")
@@ -1357,6 +1402,7 @@ class AlignSerializer(ProcessSerializerMixin, serializers.Serializer):
         self.document.queue_alignment(
             parts=parts,
             user_pk=self.user.pk,
+            task_group_pk=self.task_group.pk,
             transcription_pk=transcription.pk,
             witness_pk=witness.pk,
             # handle empty strings, NoneType; allow some values that could be false

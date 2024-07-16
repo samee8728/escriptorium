@@ -12,6 +12,27 @@
                 title="Visual Transcription Panel"
                 class="panel-icon fas fa-language"
             />
+
+            <div class="btn-group">
+                <button
+                    id="font-smaller"
+                    ref="font-smaller"
+                    title="Smaller font"
+                    class="btn btn-sm btn-info ml-3 fas fa-minus"
+                    autocomplete="off"
+                    @click="smallerFont"
+                />
+                <button
+                    id="font-larger"
+                    ref="font-larger"
+                    title="Larger font"
+                    class="btn btn-sm btn-info fas fa-plus"
+                    autocomplete="off"
+                    @click="largerFont"
+                />
+            </div>
+
+
             <input
                 v-if="hasConfidence && confidenceVisible"
                 id="confidence-range"
@@ -166,6 +187,7 @@ export default {
     mixins: [BasePanel],
     data() {
         return {
+            fontSizeRatio: userProfile.get("visu-font-size-" + this.$store.state.document.id, 0.25),
             confidenceMenuOpen: false,
         }
     },
@@ -194,7 +216,7 @@ export default {
             this.refresh();
         }.bind(this));
 
-        if (this.legacyModeEnabled && this.hasConfidence() && this.confidenceVisible) {
+        if (this.legacyModeEnabled && this.hasConfidence && this.confidenceVisible) {
             $('[data-toggle="tooltip"]').tooltip();
         }
     },
@@ -213,6 +235,16 @@ export default {
             Vue.nextTick(function() {
                 this.resetLines();
             }.bind(this));
+        },
+        smallerFont() {
+            this.fontSizeRatio -= this.fontSizeRatio/10;
+            userProfile.set("visu-font-size-" + this.$store.state.document.id, this.fontSizeRatio);
+            this.resetLines();
+        },
+        largerFont() {
+            this.fontSizeRatio += this.fontSizeRatio/10;
+            userProfile.set("visu-font-size-" + this.$store.state.document.id, this.fontSizeRatio);
+            this.resetLines();
         },
         changeConfidenceScale(e) {
             this.scaleConfidence(e.target.value);

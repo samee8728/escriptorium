@@ -249,6 +249,28 @@
                                 </div>
                             </template>
                         </VMenu>
+                        <EscrButton
+                            color="secondary"
+                            label="Redraw Masks"
+                            size="small"
+                            :disabled="loading && loading.images"
+                            :on-click="() => openRedrawModal()"
+                        >
+                            <template #button-icon>
+                                <MasksIcon />
+                            </template>
+                        </EscrButton>
+                        <EscrButton
+                            color="secondary"
+                            label="Export"
+                            size="small"
+                            :disabled="loading && loading.images"
+                            :on-click="() => openModal('export')"
+                        >
+                            <template #button-icon>
+                                <ExportIcon />
+                            </template>
+                        </EscrButton>
                         <VMenu
                             placement="bottom-start"
                             :triggers="['click']"
@@ -269,14 +291,6 @@
                             <template #popper>
                                 <ul class="escr-vertical-menu">
                                     <li>
-                                        <button
-                                            @mousedown="() => openModal('export')"
-                                        >
-                                            <ExportIcon class="escr-menuitem-icon" />
-                                            <span>Export</span>
-                                        </button>
-                                    </li>
-                                    <li class="new-section">
                                         <button
                                             @mousedown="() => openDeleteModal()"
                                         >
@@ -513,6 +527,17 @@
                     :on-submit="handleSubmitExport"
                     :scope="selectedParts.length === 1 ? 'Image' : `${selectedParts.length} Images`"
                 />
+                <!-- redraw masks modal -->
+                <ConfirmModal
+                    v-if="redrawModalOpen"
+                    body-text="Are you sure you want to redraw all masks on the selected image(s)?"
+                    color="primary"
+                    title="Redraw Masks"
+                    :cannot-undo="true"
+                    :disabled="loading && loading.images"
+                    :on-cancel="() => closeRedrawModal()"
+                    :on-confirm="onRedrawMasks"
+                />
                 <!-- delete images modal -->
                 <ConfirmModal
                     v-if="deleteModalOpen"
@@ -555,6 +580,7 @@ import ImportIcon from "../../components/Icons/ImportIcon/ImportIcon.vue";
 import ImportModal from "../../components/ImportModal/ImportModal.vue";
 import LineOrderingIcon from "../../components/Icons/LineOrderingIcon/LineOrderingIcon.vue";
 import ListIcon from "../../components/Icons/ListIcon/ListIcon.vue";
+import MasksIcon from "../../components/Icons/MasksIcon/MasksIcon.vue";
 import ModelsIcon from "../../components/Icons/ModelsIcon/ModelsIcon.vue";
 import ModelsPanel from "../../components/ModelsPanel/ModelsPanel.vue";
 import MoveImageIcon from "../../components/Icons/MoveImageIcon/MoveImageIcon.vue";
@@ -602,6 +628,7 @@ export default {
         LineOrderingIcon,
         // eslint-disable-next-line vue/no-unused-components
         ListIcon,
+        MasksIcon,
         // eslint-disable-next-line vue/no-unused-components
         ModelsIcon,
         // eslint-disable-next-line vue/no-unused-components
@@ -671,6 +698,7 @@ export default {
             rangeValidationError: null,
             rangeInputValue: "",
             rangeRegex: /^\d+((,|-)\d+)*$/g,
+            redrawModalOpen: false,
             textFilter: "",
             textFilterValue: "",
         }
@@ -937,6 +965,7 @@ export default {
             "fetchParts",
             "handleSubmitAlign",
             "handleSubmitExport",
+            "handleSubmitRedrawMasks",
             "handleSubmitSegmentation",
             "handleSubmitTraining",
             "handleSubmitTranscribe",
@@ -1252,6 +1281,27 @@ export default {
         setDisplayMode(mode) {
             localStorage.setItem("images-display-mode", mode);
             this.displayMode = mode;
+        },
+        /**
+         * Open the redraw masks confirmation modal
+         */
+        openRedrawModal() {
+            this.redrawModalOpen = true;
+        },
+        /**
+         * Close the redraw masks confirmation modal
+         */
+        closeRedrawModal() {
+            this.redrawModalOpen = false;
+        },
+        /**
+         * Submit the redraw masks task
+         */
+        async onRedrawMasks() {
+            this.setLoading({ key: "images", loading: true });
+            await this.handleSubmitRedrawMasks();
+            this.closeRedrawModal();
+            this.setLoading({ key: "images", loading: false });
         },
     },
 }

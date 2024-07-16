@@ -37,6 +37,7 @@ class BaseExporter:
         part_pks,
         region_types,
         include_images,
+        include_characters,
         user,
         document,
         report,
@@ -45,6 +46,7 @@ class BaseExporter:
         self.part_pks = part_pks
         self.region_types = region_types
         self.include_images = include_images
+        self.include_characters = include_characters
         self.user = user
         self.document = document
         self.report = report
@@ -142,6 +144,7 @@ class XMLTemplateExporter(BaseExporter):
                     Line = apps.get_model("core", "Line")
                     page = tplt.render(
                         {
+                            "include_characters": self.include_characters,
                             "valid_block_types": self.document.valid_block_types.all(),
                             "valid_line_types": self.document.valid_line_types.all(),
                             "part": part,
@@ -169,6 +172,8 @@ class XMLTemplateExporter(BaseExporter):
                             element=part.name, image=part.filename, reason=str(e)
                         )
                     )
+                    if settings.EXPORT_STRICT:
+                        raise e
                 else:
                     filename = "%s.xml" % os.path.splitext(part.filename)[0]
                     zip_.writestr(filename, page)

@@ -22,7 +22,7 @@
                 :disabled="disabled"
             />
             <EscrButton
-                :color="color"
+                :color="color === 'text' ? 'outline-text' : color"
                 :label="confirmVerb"
                 :on-click="onConfirm"
                 :disabled="disabled"

@@ -88,6 +88,7 @@ const actions = {
                 },
                 { root: true },
             );
+            dispatch("document/fetchDocumentTasks", null, { root: true });
         } catch (error) {
             commit(
                 "document/setLoading",

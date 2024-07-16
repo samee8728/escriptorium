@@ -104,40 +104,6 @@ def lossless_compression(instance_pk=None, user_pk=None, **kwargs):
     part.compress()
 
 
-@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
-def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **kwargs):
-    try:
-        DocumentPart = apps.get_model('core', 'DocumentPart')
-        part = DocumentPart.objects.get(pk=instance_pk)
-    except DocumentPart.DoesNotExist:
-        logger.error('Trying to binarize non-existent DocumentPart : %d', instance_pk)
-        return
-
-    if user_pk:
-        try:
-            user = User.objects.get(pk=user_pk)
-            # If quotas are enforced, assert that the user still has free CPU minutes
-            if not settings.DISABLE_QUOTAS and user.cpu_minutes_limit() is not None:
-                assert user.has_free_cpu_minutes(), f"User {user.id} doesn't have any CPU minutes left"
-        except User.DoesNotExist:
-            user = None
-    else:
-        user = None
-
-    try:
-        part.binarize(threshold=threshold)
-    except Exception as e:
-        if user:
-            user.notify(_("Something went wrong during the binarization!"),
-                        id="binarization-error", level='danger')
-        logger.exception(e)
-        raise e
-    else:
-        if user:
-            user.notify(_("Binarization done!"),
-                        id="binarization-success", level='success')
-
-
 def make_recognition_segmentation(lines) -> List[Segmentation]:
     """
     Groups training data by image for optimized compilation and returns a list
@@ -235,7 +201,7 @@ def _to_ptl_device(device: str):
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwargs):
+def segtrain(model_pk=None, part_pks=[], document_pk=None, task_group_pk=None, user_pk=None, **kwargs):
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -389,7 +355,7 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=5 * 60)
 def segment(instance_pk=None, user_pk=None, model_pk=None,
             steps=None, text_direction=None, override=None,
-            **kwargs):
+            task_group_pk=None, **kwargs):
     """
     steps can be either 'regions', 'lines' or 'both'
     """
@@ -562,7 +528,8 @@ def train_(qs, document, transcription, model=None, user=None):
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def train(transcription_pk=None, model_pk=None, part_pks=None, user_pk=None, **kwargs):
+def train(transcription_pk=None, model_pk=None, task_group_pk=None,
+          part_pks=None, user_pk=None, **kwargs):
     if user_pk:
         try:
             user = User.objects.get(pk=user_pk)
@@ -674,6 +641,11 @@ def forced_align(instance_pk=None, model_pk=None, transcription_pk=None,
         records = kraken_forced_align(data, model)  # base_dir = L,R
         for pred in records:
             # lt.content = pred.prediction
+            if text_direction == 'horizontal-rl' or text_direction == 'vertical-rl':
+                reorder = 'R'
+            else:
+                reorder = 'L'
+            pred = pred.logical_order(reorder)
             lt.graphs = [{
                 'c': letter,
                 'poly': poly,
@@ -685,7 +657,8 @@ def forced_align(instance_pk=None, model_pk=None, transcription_pk=None,
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 def transcribe(instance_pk=None, model_pk=None, user_pk=None,
-               transcription_pk=None, text_direction=None, **kwargs):
+               transcription_pk=None, text_direction=None, task_group_pk=None,
+               **kwargs):
 
     try:
         DocumentPart = apps.get_model('core', 'DocumentPart')
@@ -733,6 +706,7 @@ def align(
     document_pk=None,
     part_pks=[],
     user_pk=None,
+    task_group_pk=None,
     transcription_pk=None,
     witness_pk=None,
     n_gram=25,

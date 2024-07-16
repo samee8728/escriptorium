@@ -81,7 +81,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_single.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(60):
+            with self.assertNumQueries(62):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -105,7 +105,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_single_baselines.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(44):
+            with self.assertNumQueries(46):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -129,7 +129,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test.zip'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(77):
+            with self.assertNumQueries(81):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -154,7 +154,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_composedblock.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(86):
+            with self.assertNumQueries(88):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -351,7 +351,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_pagexml.zip'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(412):  # there's a lot of lines in there
+            with self.assertNumQueries(418):  # there's a lot of lines in there
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -383,7 +383,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_pagexml_types.xml'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(92):
+            with self.assertNumQueries(94):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })

@@ -92,7 +92,7 @@ export const createComponentTaxonomy = async ({
 }) =>
     await axios.post(`/documents/${documentId}/taxonomies/components/`, {
         name,
-        allowed_values: allowedValues,
+        allowed_values: allowedValues || [],
     });
 
 // update an annotation component
@@ -104,7 +104,7 @@ export const updateComponentTaxonomy = async ({
 }) =>
     await axios.patch(`/documents/${documentId}/taxonomies/components/${pk}/`, {
         name,
-        allowed_values: allowedValues,
+        allowed_values: allowedValues || [],
     });
 
 // delete an annotation component
@@ -357,11 +357,7 @@ export const queueImport = async ({ documentId, params }) => {
 
 // retrieve latest tasks for a document
 export const retrieveDocumentTasks = async ({ documentId }) =>
-    await axios.get("/tasks/", {
-        params: {
-            document: documentId,
-        },
-    });
+    await axios.get(`/documents/${documentId}/task_groups/`);
 
 // cancel a task on a document by pk
 export const cancelTask = async ({ documentId, taskReportId }) =>
