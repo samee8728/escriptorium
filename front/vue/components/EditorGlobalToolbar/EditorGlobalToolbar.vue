@@ -208,6 +208,15 @@
                                 <span>Text / Line Ordering</span>
                             </button>
                         </li>
+                        <li v-if="!editorPanels.includes('source')">
+                            <button
+                                type="button"
+                                @mousedown="onAddEditorPanel('source')"
+                            >
+                                <ImageAnnotationIcon />
+                                <span>Image Annotation</span>
+                            </button>
+                        </li>
                     </ul>
                 </template>
             </VDropdown>
@@ -221,6 +230,7 @@ import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import CursorPanIcon from "../Icons/CursorPanIcon/CursorPanIcon.vue";
 import CursorSelectIcon from "../Icons/CursorSelectIcon/CursorSelectIcon.vue";
 import EscrButton from "../Button/Button.vue";
+import ImageAnnotationIcon from "../Icons/ImageAnnotationIcon/ImageAnnotationIcon.vue";
 import RotateCCWIcon from "../Icons/RotateCCWIcon/RotateCCWIcon.vue";
 import RotateCWIcon from "../Icons/RotateCWIcon/RotateCWIcon.vue";
 import SegmentIcon from "../Icons/SegmentIcon/SegmentIcon.vue";
@@ -240,6 +250,7 @@ export default {
         CursorPanIcon,
         CursorSelectIcon,
         EscrButton,
+        ImageAnnotationIcon,
         RotateCCWIcon,
         RotateCWIcon,
         SegmentIcon,

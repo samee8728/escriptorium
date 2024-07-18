@@ -1819,6 +1819,7 @@ class Transcription(ExportModelOperationsMixin("Transcription"), models.Model):
         if self.name == self.DEFAULT_NAME:
             raise ProtectedObjectException
         else:
+            self.name += ' (archived ' + datetime.strftime(datetime.now(), '%y/%m/%d-%H:%M:%S') + ')'
             self.archived = True
             self.save()
 

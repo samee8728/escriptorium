@@ -243,8 +243,8 @@ export default {
         },
         websocketListener(e) {
             const data = JSON.parse(e.data);
-            // only handle "message" type here, for display purposes
             if (data.type == "message") {
+                // handle "message" type here, for display purposes
                 const message = data.text;
                 // map color to our color scheme
                 let color = "text";
@@ -263,6 +263,15 @@ export default {
                 } else {
                     this.add({ color, message });
                 }
+            } else if (data.type === "event" && data.name === "part:mask") {
+                // handle "event" type just for part:mask for mask recalculation
+                data.data.lines.forEach((lineData) => {
+                    let line = this.$store.state.lines.all.find((l) => l.pk == lineData.pk);
+                    if (line) {  // might have been deleted in the meantime
+                        this.$store.commit("lines/update", lineData)
+                    }
+                });
+                this.add({ color: "success", message: "Successfully calculated masks" });
             }
         },
     }

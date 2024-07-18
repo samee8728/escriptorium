@@ -60,6 +60,17 @@
                                 <span>Text / Line Ordering</span>
                             </button>
                         </li>
+                        <li>
+                            <button
+                                type="button"
+                                @mousedown="() => onSwitchPanel({
+                                    index: panelIndex, panel: 'source'
+                                })"
+                            >
+                                <ImageAnnotationIcon />
+                                <span>Image Annotation</span>
+                            </button>
+                        </li>
                     </ul>
                 </template>
             </VMenu>
@@ -93,6 +104,7 @@
 <script>
 import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import EscrButton from "../Button/Button.vue";
+import ImageAnnotationIcon from "../Icons/ImageAnnotationIcon/ImageAnnotationIcon.vue";
 import RemovePanelIcon from "../Icons/RemovePanelIcon/RemovePanelIcon.vue";
 import SegmentIcon from "../Icons/SegmentIcon/SegmentIcon.vue";
 import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
@@ -106,6 +118,7 @@ export default {
     components: {
         ChevronDownIcon,
         EscrButton,
+        ImageAnnotationIcon,
         RemovePanelIcon,
         SegmentIcon,
         TranscribeIcon,
@@ -153,6 +166,8 @@ export default {
                     return TranscribeIcon;
                 case "diplomatic":
                     return TextPanelIcon;
+                case "source":
+                    return ImageAnnotationIcon;
                 default:
                     return null;
             }
@@ -165,6 +180,8 @@ export default {
                     return "transcription";
                 case "diplomatic":
                     return "text/line ordering";
+                case "source":
+                    return "text annotation";
                 default:
                     return null;
             }

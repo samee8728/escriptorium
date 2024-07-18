@@ -10,6 +10,8 @@
         <a
             v-if="actionLink && actionLabel"
             :href="actionLink"
+            target="_blank"
+            rel="noopener noreferrer"
             class="escr-button escr-button--small escr-button--outline-text"
         >
             {{ actionLabel }}
