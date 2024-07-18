@@ -44,6 +44,21 @@
                     Will significantly increase the time to produce and download the export.
                 </span>
             </div>
+
+            <div class="escr-form-field escr-include-characters-field escr-checkbox-field">
+                <label>
+                    <input
+                        type="checkbox"
+                        value="include-characters"
+                        @change="handleIncludeCharactersChange"
+                    >
+                    Include Characters
+                </label>
+                <span class="escr-help-text">
+                    This data is only present for transcriptions coming from automatic recognition and is invalidated by manual edition.
+                </span>
+            </div>
+
             <ArrayField
                 :on-change="handleRegionTypesChange"
                 :options="regionTypesOptions"
@@ -151,6 +166,7 @@ export default {
             fileFormat: (state) => state.forms.export.fileFormat,
             formRegionTypes: (state) => state.forms.export.regionTypes,
             includeImages: (state) => state.forms.export.includeImages,
+            includeCharacters: (state) => state.forms.export.includeCharacters,
             transcriptionLayer: (state) => state.forms.export.transcription,
         }),
         /**
@@ -235,6 +251,13 @@ export default {
             this.handleGenericInput({
                 form: "export",
                 field: "includeImages",
+                value: e.target.checked,
+            });
+        },
+        handleIncludeCharactersChange(e) {
+            this.handleGenericInput({
+                form: "export",
+                field: "includeCharacters",
                 value: e.target.checked,
             });
         },

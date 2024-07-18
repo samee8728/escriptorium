@@ -18,6 +18,8 @@
     position: fixed;
     top: 15%;
     left: calc(50% - 250px);
+    overflow-y: auto;
+    max-height: 80%;
 }
 .escr-modal:not(:has(.escr-modal-backdrop)) {
     /* apply drop shadow to modals, with the exception of modals containing other modals:

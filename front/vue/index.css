@@ -141,12 +141,12 @@
     display: flex;
     flex-flow: row nowrap;
     align-items: stretch;
-    height: 100vh;
+    /*height: 100vh;
     overflow-y: hidden;
-    max-height: 100vh;
+    max-height: 100vh; */
 }
 .escr-body main {
-    max-height: 100vh;
+    /* max-height: 100vh; */
     overflow: auto;
     width: 100%;
 }
@@ -154,6 +154,9 @@
     background-color: var(--background);
     color: var(--text1);
     min-height: 100vh;
+}
+.escr-body main section {
+    overflow: auto;
 }
 .escr-page:not(#editor),
 main:has(.escr-vue-enabled):not(:has(.escr-page)) {
@@ -236,12 +239,12 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) {
 
 /* global nav layout styles */
 #vue-global-nav {
-    height: 100vh;
+    /* height: 100vh; */
     min-width: 64px;
     z-index: var(--global-nav-z);
 }
 #vue-global-nav .escr-global-nav {
-    height: 100vh;
+    height: 100%;
 }
 /* font styles */
 .escr-vue-enabled h1,

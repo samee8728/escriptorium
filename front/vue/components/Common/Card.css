@@ -2,6 +2,7 @@
     background: var(--background1);
     border-radius: 15px;
     padding-bottom: 1rem;
+    min-height: 90px;
 }
 .escr-card-padding {
     padding: 1rem;

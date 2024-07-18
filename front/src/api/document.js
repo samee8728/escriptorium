@@ -236,7 +236,7 @@ const jobTypeIds = {
 
 // retrieve all models (by job type)
 export const retrieveModels = async (jobType) =>
-    await axios.get("/models/", { params: { job: jobTypeIds[jobType] } });
+await axios.get("/models/", { params: { job: jobTypeIds[jobType], paginate_by: 30 } });
 
 // share this document with a group or user
 export const shareDocument = async ({ documentId, group, user }) =>
@@ -327,6 +327,7 @@ export const exportDocument = async ({
     documentId,
     fileFormat,
     includeImages,
+    includeCharacters,
     regionTypes,
     transcription,
     parts,
@@ -335,6 +336,7 @@ export const exportDocument = async ({
         region_types: regionTypes,
         file_format: fileFormat,
         include_images: includeImages,
+        include_characters: includeCharacters,
         transcription,
         parts,
     });

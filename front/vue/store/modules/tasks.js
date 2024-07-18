@@ -138,6 +138,7 @@ const actions = {
             fileFormat: rootState?.forms?.export?.fileFormat,
             transcription: rootState?.forms?.export?.transcription,
             includeImages: rootState?.forms?.export?.includeImages,
+            includeCharacters: rootState?.forms?.export?.includeCharacters,
             parts,
         });
     },

@@ -53,6 +53,7 @@ export default {
     export: {
         fileFormat: "",
         includeImages: false,
+        includeCharacters: false,
         regionTypes: [],
         transcription: "",
     },

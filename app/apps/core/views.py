@@ -255,6 +255,7 @@ class Search(BaseSearch):
 class FindAndReplace(BaseSearch):
     form_class = FindAndReplaceForm
     template_name = 'core/search/find_and_replace.html'
+    paginate_by = 5
 
     def get_part_image_thumbnail(self, part_image):
         thumbnailer = get_thumbnailer(part_image)
