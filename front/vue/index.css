@@ -156,7 +156,7 @@
     min-height: 100vh;
 }
 .escr-body main section {
-    overflow: auto;
+    /* overflow: auto; */
 }
 .escr-page:not(#editor),
 main:has(.escr-vue-enabled):not(:has(.escr-page)) {
