@@ -155,6 +155,10 @@ export const mutations = {
         state.editorPanels = editorPanels;
         // Persist final value in user profile
         userProfile.set("editor-panels", editorPanels);
+        console.log(editorPanels);
+        if (editorPanels.includes("segmentation")) {
+            window.location.reload();
+        }
     },
     reset(state) {
         Object.assign(state, initialState());
