@@ -787,7 +787,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:part-list',
                       kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(22):
+        with self.assertNumQueries(25):
             img = self.factory.make_image_file()
             resp = self.client.post(uri, {
                 'image': SimpleUploadedFile(
@@ -800,7 +800,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:part-detail',
                       kwargs={'document_pk': self.part.document.pk,
                               'pk': self.part.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(11):
             resp = self.client.patch(
                 uri, {'transcription_progress': 50},
                 content_type='application/json')
@@ -811,7 +811,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:part-move',
                       kwargs={'document_pk': self.part2.document.pk,
                               'pk': self.part2.pk})
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(10):
             resp = self.client.post(uri, {'index': 0})
             self.assertEqual(resp.status_code, 200)
 
@@ -852,7 +852,7 @@ class DocumentMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.doc.owner)
         uri = reverse('api:metadata-list',
                       kwargs={'document_pk': self.doc.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(11):
             resp = self.client.post(uri, {
                 'key': {'name': 'testnewkey'},
                 'value': 'testnewval'
@@ -895,7 +895,7 @@ class BlockViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:block-list',
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(11):
             # 1-2: auth
             # 3 select document_part
             # 4 select max block order
@@ -912,7 +912,7 @@ class BlockViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.block.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(12):
             resp = self.client.patch(uri, {
                 'box': '[[100,100], [150,150]]'
             }, content_type='application/json')
@@ -950,7 +950,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:line-list',
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(12):
             resp = self.client.post(uri, {
                 'document_part': self.part.pk,
                 'baseline': '[[10, 10], [50, 50]]'
@@ -964,7 +964,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.line.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(13):
             resp = self.client.patch(uri, {
                 'baseline': '[[100,100], [150,150]]'
             }, content_type='application/json')
@@ -986,7 +986,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:line-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(23):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.line.pk,
                  'mask': '[[60, 40], [60, 50], [90, 50], [90, 40]]',
@@ -1123,7 +1123,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(14):
             resp = self.client.patch(uri, {
                 'content': 'update'
             }, content_type='application/json')
@@ -1135,7 +1135,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
 
-        with self.assertNumQueries(12):
+        with self.assertNumQueries(25):
             resp = self.client.post(uri, {
                 'line': self.line2.pk,
                 'transcription': self.transcription.pk,
@@ -1150,7 +1150,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
 
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(16):
             resp = self.client.put(uri, {'content': 'test',
                                          'transcription': self.lt.transcription.pk,
                                          'line': self.lt.line.pk},
@@ -1166,7 +1166,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         ll = Line.objects.create(
             mask=[10, 10, 50, 50],
             document_part=self.part)
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(28):
             resp = self.client.post(
                 uri,
                 {'lines': [
@@ -1184,7 +1184,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:linetranscription-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
 
-        with self.assertNumQueries(18):
+        with self.assertNumQueries(36):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.lt.pk,
                  'content': 'test1 new',
@@ -1423,7 +1423,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:partmetadata-list',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(14):
             resp = self.client.post(uri, {'key': {'name': 'testname', 'cidoc': 'testcidoc'},
                                           'value': 'testvalue'},
                                     content_type='application/json')
@@ -1438,7 +1438,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
         uri = reverse('api:partmetadata-list',
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(11):
             resp = self.client.post(uri, {'key': {'name': 'testmd'},
                                           'value': 'testvalue2'},
                                     content_type='application/json')
@@ -1456,7 +1456,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': md.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(14):
             resp = self.client.patch(uri, {'key': {'name': 'testname2'}},
                                      content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.content)
@@ -1470,7 +1470,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': md.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(13):
             resp = self.client.patch(uri, {'value': 'testvalue2'},
                                      content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.content)

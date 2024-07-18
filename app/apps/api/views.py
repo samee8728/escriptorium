@@ -236,7 +236,9 @@ class ProjectViewSet(ModelViewSet):
                     'documents',
                     filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
                     distinct=True))
-                .select_related('owner'))
+                .select_related('owner')
+                .order_by('-updated_at')
+                )
 
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
