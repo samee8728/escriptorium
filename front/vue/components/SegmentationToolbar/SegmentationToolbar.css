@@ -5,11 +5,12 @@
     justify-content: space-between;
     align-items: stretch;
     background-color: var(--background2);
-    max-height: 130px;
+    max-height: none;
 }
 
 /* special styling for segmentation-specific tools */
-.escr-segmentation-toolbar .escr-editortools-paneltools {
+.escr-segmentation-toolbar .escr-editortools-paneltools,
+.escr-segmentation-toolbar .escr-editortools-paneltools .new-section {
     flex-flow: row wrap;
 }
 
