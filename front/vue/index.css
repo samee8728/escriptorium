@@ -141,12 +141,12 @@
     display: flex;
     flex-flow: row nowrap;
     align-items: stretch;
-    /*height: 100vh;
+    height: 100vh;
     overflow-y: hidden;
-    max-height: 100vh; */
+    max-height: 100vh;
 }
 .escr-body main {
-    /* max-height: 100vh; */
+    max-height: 100vh;
     overflow: auto;
     width: 100%;
 }
@@ -155,15 +155,31 @@
     color: var(--text1);
     min-height: 100vh;
 }
-.escr-body main section {
-    /* overflow: auto; */
-}
 .escr-page:not(#editor),
 main:has(.escr-vue-enabled):not(:has(.escr-page)) {
     padding: 16px 32px;
 }
 .escr-vue-enabled .escr-page-container {
     background-color: var(--background);
+}
+
+/* screens smaller than desktop */
+@media (max-width: 1200px),
+    (max-height: 680px) {
+    .escr-page-container {
+        min-width: 1200px;
+        min-height: 768px;
+        max-height: max(768px, 100vh);
+    }
+    html,
+    .escr-body,
+    .escr-body-main {
+        overflow: hidden;
+    }
+    .escr-page:not(#editor),
+    main:has(.escr-vue-enabled):not(:has(.escr-page)) {
+        padding-bottom: 0;
+    }
 }
 
 /* Typography */
@@ -239,12 +255,12 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) {
 
 /* global nav layout styles */
 #vue-global-nav {
-    /* height: 100vh; */
+    height: 100vh;
     min-width: 64px;
     z-index: var(--global-nav-z);
 }
 #vue-global-nav .escr-global-nav {
-    height: 100%;
+    height: 100vh;
 }
 /* font styles */
 .escr-vue-enabled h1,
