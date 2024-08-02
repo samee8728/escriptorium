@@ -2,7 +2,6 @@
 .escr-sidebar-container {
     display: flex;
     z-index: var(--sidebar-container-z);
-    height: 100%;
 }
 /* sidebar */
 .escr-sidebar {

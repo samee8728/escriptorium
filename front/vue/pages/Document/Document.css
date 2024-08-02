@@ -9,8 +9,7 @@
     display: grid;
     gap: 24px;
     grid-template-columns: 56% 44%;
-    min-height: 500px;
-    /* height: 100%; */
+    min-height: calc(100vh - 51px);
 }
 .escr-document-dashboard .escr-doc-left-grid,
 .escr-document-dashboard .escr-doc-right-grid {
@@ -20,6 +19,19 @@
     min-height: 100%;
     max-height: calc(100vh - 75px);
 }
+@media (max-width: 1200px),
+(max-height: 680px) {
+    .escr-document-dashboard {
+        height: max(768px, calc(100vh - 16px));
+    }
+    .escr-document-dashboard .escr-grid-container {
+        height: max(calc(768px - 51px), calc(100% - 51px));
+    }
+    .escr-document-dashboard .escr-doc-left-grid,
+    .escr-document-dashboard .escr-doc-right-grid {
+        max-height: calc(100% - 75px);
+    }
+}
 
 /**
  * left side grid
@@ -27,7 +39,7 @@
 .escr-document-dashboard .escr-doc-left-grid {
     grid-template-columns: 2fr 3fr;
     grid-template-rows: 0.5fr 0.7fr 0.7fr 1fr 1fr;
-    /* padding-bottom: 24px; */
+    padding-bottom: 24px;
     align-items: stretch;
     grid-template-areas:
         "header header"
@@ -44,6 +56,8 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
 }
 .escr-document-dashboard .escr-document-metadata {
     color: var(--text2);
@@ -70,6 +84,7 @@
 /* tasks */
 .escr-document-dashboard .escr-document-tasks {
     grid-area: tasks;
+    overflow: hidden;
     display: flex;
     flex-flow: column;
 }
@@ -152,6 +167,7 @@
 /* images list */
 .escr-document-dashboard .escr-document-images {
     grid-area: images;
+    overflow: hidden;
     display: flex;
     flex-flow: column;
     padding-bottom: 0;
@@ -167,7 +183,7 @@
  */
 .escr-document-dashboard .escr-doc-right-grid {
     background-color: var(--background3);
-    /* margin-top: -51px; */
+    margin-top: -51px;
     padding: 51px 48px 24px 24px;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -180,8 +196,7 @@
         "chars chars chars"
         "ontology ontology ontology"
         "ontology ontology ontology";
-    /* min-height: calc(100% + 51px); */
-    height: 100%;
+    min-height: calc(100% + 51px);
 }
 /* right side header and select element */
 .escr-document-dashboard .doc-stats-header {
