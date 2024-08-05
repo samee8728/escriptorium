@@ -155,8 +155,9 @@ export const mutations = {
         state.editorPanels = editorPanels;
         // Persist final value in user profile
         userProfile.set("editor-panels", editorPanels);
-        console.log(editorPanels);
         if (editorPanels.includes("segmentation")) {
+            // FIXME: This is a temporary solution until the issue
+            // with the segmentation canvas shifting is resolved.
             window.location.reload();
         }
     },
@@ -284,6 +285,8 @@ export const actions = {
             commit("addEditorPanel", panel);
             if (panel === "segmentation") {
                 if (state.segmentationOpened) {
+                    // FIXME: This is a temporary solution until the issue
+                    // with the segmentation canvas shifting is resolved.
                     window.location.reload();
                 } else {
                     commit("setSegmentationOpened");
@@ -627,6 +630,8 @@ export const actions = {
                     panel === "segmentation"))
         ) {
             commit("switchEditorPanel", { index, panel });
+            // FIXME: This is a temporary solution until the issue
+            // with the segmentation canvas shifting is resolved.
             window.location.reload();
         } else {
             commit("switchEditorPanel", { index, panel });
