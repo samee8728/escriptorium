@@ -159,7 +159,7 @@
 </template>
 
 <script>
-import { mapActions, mapState } from "vuex";
+import { mapActions, mapMutations, mapState } from "vuex";
 import EditorGlobalToolbar from "../components/EditorGlobalToolbar/EditorGlobalToolbar.vue";
 import SourcePanel from "./SourcePanel.vue";
 import SegPanel from "./SegPanel.vue";
@@ -207,6 +207,7 @@ export default {
             prevPart: (state) => state.parts.previous,
             readDirection: (state) => state.document.readDirection,
             visiblePanels: (state) => state.document.visible_panels,
+            segmentationToken: (state) => state.document.segmentationToken,
         }),
     },
     created() {
@@ -283,8 +284,12 @@ export default {
                 }
             }
         }.bind(this));
+        if (this.editorPanels.includes("segmentation")) {
+            this.setSegmentationOpened();
+        }
     },
     methods: {
+        ...mapMutations("document", ["setSegmentationOpened"]),
         ...mapActions("parts", ["loadPart", "rotate"]),
         ...mapActions("globalTools", ["toggleTool", "setActiveTool"]),
         prefetchImage(src, callback) {
