@@ -928,6 +928,16 @@ export default {
             this.setLoading({ key: "document", loading: false });
             this.addError(error);
         }
+
+        // set selected image if select param is present
+        const params = new URLSearchParams(document.location.search);
+        const select = params.get("select");
+        if (select &&
+            parseInt(select) &&
+            this.parts.some((p) => p.pk === parseInt(select))
+        ) {
+            this.setSelectedParts([parseInt(select)]);
+        }
         // load models
         try {
             await this.fetchDocumentModels();
