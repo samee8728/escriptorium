@@ -50,6 +50,7 @@
             <component
                 :is="currentComponent"
                 :invalid="invalid"
+                :on-import-complete="handleSubmit/* only required for image import */"
             />
         </template>
         <template #modal-actions>
