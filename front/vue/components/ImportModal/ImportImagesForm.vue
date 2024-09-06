@@ -43,6 +43,10 @@ export default {
             type: Object,
             required: true,
         },
+        onImportComplete: {
+            type: Function,
+            required: true,
+        }
     },
     data: function() {
         return {
@@ -78,6 +82,7 @@ export default {
         queueComplete() {
             this.setImagesLoading(false);
             this.handleGenericInput({ form: "import", field: "imagesComplete", value: true });
+            this.onImportComplete();
         }
     }
 }
