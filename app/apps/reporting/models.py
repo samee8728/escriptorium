@@ -17,6 +17,12 @@ class TaskGroup(models.Model):
     document = models.ForeignKey("core.Document", on_delete=models.CASCADE)
     task = models.CharField(max_length=256)
 
+    # those 2 fields are only to be used in case of a single child task
+    # with obvious steps, for example an import is a single celery task
+    # but we have a set amount of files in the archive.
+    # current = models.PositiveIntegerField(blank=True, null=True)
+    # total = models.PositiveIntegerField(blank=True, null=True)
+
     class Meta:
         ordering = ["-created_at"]
 

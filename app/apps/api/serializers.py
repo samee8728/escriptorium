@@ -449,125 +449,6 @@ class DocumentSerializer(serializers.ModelSerializer):
         return repr
 
 
-class ImportSerializer(serializers.Serializer):
-    MODE_CHOICES = (
-        ('pdf', 'Import a pdf file.'),
-        ('iiif', 'Import from a iiif manifest.'),
-        ('mets', 'Import a mets file.'),
-        ('xml', 'Import from a xml file.')
-    )
-    mode = serializers.ChoiceField(choices=MODE_CHOICES)
-
-    transcription = serializers.PrimaryKeyRelatedField(
-        queryset=Transcription.objects.all(),
-        required=False)
-    name = serializers.CharField(required=False)
-    override = serializers.BooleanField(required=False)
-    upload_file = serializers.FileField(required=False)
-
-    iiif_uri = serializers.URLField(required=False)
-
-    METS_TYPE_CHOICES = (
-        ('local', _('Upload local file')),
-        ('url', _('download file from url')),
-    )
-    mets_type = serializers.ChoiceField(choices=METS_TYPE_CHOICES, required=False)
-    mets_uri = serializers.URLField(required=False)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = self.context["view"].request.user
-        self.document = Document.objects.get(pk=self.context["view"].kwargs["document_pk"])
-        self.mets_base_uri = None
-        self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
-
-    def validate_iiif_uri(self, uri):
-        try:
-            content, total = clean_import_uri(uri, self.document, 'tmp.json')
-            self.file = ContentFile(content, name='iiif_manifest.json')
-            self.total = total
-        except FileImportError as e:
-            raise serializers.ValidationError(repr(e))
-
-    def validate_mets_uri(self, uri):
-        try:
-            self.mets_base_uri = os.path.dirname(uri)
-            content, total = clean_import_uri(uri, self.document, 'tmp.xml',
-                                              is_mets=True, mets_base_uri=self.mets_base_uri)
-            self.file = ContentFile(content, name='mets.xml')
-            self.total = total
-        except FileImportError as e:
-            raise serializers.ValidationError(repr(e))
-
-    def validate_upload_file(self, upload_file):
-        try:
-            parser = clean_upload_file(upload_file, self.document, self.user)
-            self.file = parser.file
-            self.total = parser.total
-        except FileImportError as e:
-            raise serializers.ValidationError(repr(e))
-
-    def validate(self, data):
-        data = super().validate(data)
-
-        # validate different modes
-        mode = data.get('mode')
-        if mode == 'iiif':
-            if 'iiif_uri' not in data:
-                raise serializers.ValidationError("'iiif_uri' is mandatory with mode 'iiif'.")
-
-        elif mode == 'mets':
-            if 'mets_type' not in data:
-                raise serializers.ValidationError("'mets_type' is mandatory with mode 'mets'.")
-            else:
-                if data.get('mets_type') == 'url':
-                    if 'mets_uri' not in data:
-                        raise serializers.ValidationError("'mets_uri' is mandatory with mode 'mets'. and type 'url'")
-                elif 'upload_file' not in data:
-                    raise serializers.ValidationError("'upload_file' is mandatory with mode 'mets'. and type 'local'")
-
-        elif mode == 'pdf':
-            if 'upload_file' not in data:
-                raise serializers.ValidationError("'upload_file' is mandatory with mode 'pdf'.")
-
-        elif mode == 'xml':
-            if 'upload_file' not in data:
-                raise serializers.ValidationError("'upload_file' is mandatory with mode 'xml'.")
-
-        if not settings.DISABLE_QUOTAS:
-            if not self.user.has_free_cpu_minutes():
-                raise serializers.ValidationError(_("You don't have any CPU minutes left."))
-
-        return data
-
-    def create(self, validated_data):
-        if 'name' in validated_data:
-            name = validated_data.get("name")
-        elif 'transcription' in validated_data:
-            name = validated_data.get('transcription').name
-        else:
-            name = ''
-        imp = DocumentImport(
-            document=self.document,
-            name=name,
-            override=validated_data.get('override') or False,
-            import_file=self.file,
-            total=self.total,
-            started_by=self.user,
-            with_mets=validated_data.get('mode') == 'mets',
-            mets_base_uri=self.mets_base_uri
-        )
-        imp.save()
-
-        document_import.delay(
-            import_pk=imp.pk,
-            user_pk=self.user.pk,
-            report_label=_('Import in %(document_name)s') % {'document_name': self.document.name}
-        )
-
-        return imp
-
-
 class DocumentTasksSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     tasks_stats = serializers.SerializerMethodField()
@@ -617,7 +498,10 @@ class TaskGroupSerializer(serializers.ModelSerializer):
         return data
 
     def get_method(self, task_group):
-        return task_group.taskreport_set.values_list('method').first()[0]
+        try:
+            return task_group.taskreport_set.values_list('method').first()[0]
+        except TypeError:
+            return None
 
 
 class TaskReportSerializer(serializers.ModelSerializer):
@@ -939,10 +823,10 @@ class ProcessSerializerMixin():
     CHECK_GPU_QUOTA = False
     CHECK_DISK_QUOTA = False
 
-    def __init__(self, document, user, *args, **kwargs):
-        self.document = document
-        self.user = user
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = self.context["view"].request.user
+        self.document = self.context["document"]
 
     def validate(self, data):
         data = super().validate(data)
@@ -1098,6 +982,125 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
                        part_pks=[part.pk for part in self.validated_data.get('parts')],
                        document_pk=self.document.pk,
                        user_pk=self.user.pk)
+
+
+class ImportSerializer(ProcessSerializerMixin, serializers.Serializer):
+    PROCESS_NAME = 'Import'
+    MODE_CHOICES = (
+        ('pdf', 'Import a pdf file.'),
+        ('iiif', 'Import from a iiif manifest.'),
+        ('mets', 'Import a mets file.'),
+        ('xml', 'Import from a xml file.')
+    )
+    mode = serializers.ChoiceField(choices=MODE_CHOICES)
+
+    transcription = serializers.PrimaryKeyRelatedField(
+        queryset=Transcription.objects.all(),
+        required=False)
+    name = serializers.CharField(required=False)
+    override = serializers.BooleanField(required=False)
+    upload_file = serializers.FileField(required=False)
+
+    iiif_uri = serializers.URLField(required=False)
+
+    METS_TYPE_CHOICES = (
+        ('local', _('Upload local file')),
+        ('url', _('download file from url')),
+    )
+    mets_type = serializers.ChoiceField(choices=METS_TYPE_CHOICES, required=False)
+    mets_uri = serializers.URLField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mets_base_uri = None
+        self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
+
+    def validate_iiif_uri(self, uri):
+        try:
+            content, total = clean_import_uri(uri, self.document, 'tmp.json')
+            self.file = ContentFile(content, name='iiif_manifest.json')
+            self.total = total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate_mets_uri(self, uri):
+        try:
+            self.mets_base_uri = os.path.dirname(uri)
+            content, total = clean_import_uri(uri, self.document, 'tmp.xml',
+                                              is_mets=True, mets_base_uri=self.mets_base_uri)
+            self.file = ContentFile(content, name='mets.xml')
+            self.total = total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate_upload_file(self, upload_file):
+        try:
+            parser = clean_upload_file(upload_file, self.document, self.user)
+            self.file = parser.file
+            self.total = parser.total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        # validate different modes
+        mode = data.get('mode')
+        if mode == 'iiif':
+            if 'iiif_uri' not in data:
+                raise serializers.ValidationError("'iiif_uri' is mandatory with mode 'iiif'.")
+
+        elif mode == 'mets':
+            if 'mets_type' not in data:
+                raise serializers.ValidationError("'mets_type' is mandatory with mode 'mets'.")
+            else:
+                if data.get('mets_type') == 'url':
+                    if 'mets_uri' not in data:
+                        raise serializers.ValidationError("'mets_uri' is mandatory with mode 'mets'. and type 'url'")
+                elif 'upload_file' not in data:
+                    raise serializers.ValidationError("'upload_file' is mandatory with mode 'mets'. and type 'local'")
+
+        elif mode == 'pdf':
+            if 'upload_file' not in data:
+                raise serializers.ValidationError("'upload_file' is mandatory with mode 'pdf'.")
+
+        elif mode == 'xml':
+            if 'upload_file' not in data:
+                raise serializers.ValidationError("'upload_file' is mandatory with mode 'xml'.")
+
+        if not settings.DISABLE_QUOTAS:
+            if not self.user.has_free_cpu_minutes():
+                raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+
+        return data
+
+    def process(self):
+        super().process()
+        if 'name' in self.validated_data:
+            name = self.validated_data.get("name")
+        elif 'transcription' in self.validated_data:
+            name = self.validated_data.get('transcription').name
+        else:
+            name = ''
+        imp = DocumentImport(
+            document=self.document,
+            name=name,
+            override=self.validated_data.get('override') or False,
+            import_file=self.file,
+            total=self.total,
+            started_by=self.user,
+            with_mets=self.validated_data.get('mode') == 'mets',
+            mets_base_uri=self.mets_base_uri
+        )
+        imp.save()
+
+        document_import.delay(
+            document_pk=self.document.pk,
+            task_group_pk=self.task_group.pk,
+            import_pk=imp.pk,
+            user_pk=self.user.pk,
+            report_label=_('Import in %(document_name)s') % {'document_name': self.document.name}
+        )
 
 
 class TextualWitnessSerializer(serializers.ModelSerializer):

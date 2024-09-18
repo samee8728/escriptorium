@@ -493,10 +493,9 @@ class DocumentViewSet(ModelViewSet):
             return self.form_error(json.dumps(form.errors))
 
     def get_process_response(self, request, serializer_class):
-        document = self.get_object()
-        serializer = serializer_class(document=document,
-                                      user=request.user,
-                                      data=request.data)
+        context = self.get_serializer_context()
+        context['document'] = self.get_object()
+        serializer = serializer_class(data=request.data, context=context)
         if serializer.is_valid():
             try:
                 serializer.process()
@@ -806,14 +805,20 @@ class PartMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
         return context
 
 
-class ImportViewSet(GenericViewSet, CreateModelMixin):
-    # queryset = DocumentPart.objects.all()
+class ImportViewSet(DocumentPermissionMixin, GenericViewSet, CreateModelMixin):
+    queryset = DocumentPart.objects.all()
     serializer_class = ImportSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['user'] = self.request.user
+        context['document'] = Document.objects.get(pk=self.kwargs.get('document_pk'))
+        return context
 
     def create(self, request, document_pk=None):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.process()
         return Response({'status': 'ok'}, status=status.HTTP_201_CREATED)
 
 

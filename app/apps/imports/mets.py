@@ -275,12 +275,11 @@ class METSProcessor:
 
         pages = self.get_pages_from_struct_map()
         for index, page in enumerate(pages, start=1):
-            self.report.append(f"Processing the page n°{index} from the provided METS file", logger_fct=logger.info)
             try:
                 mets_page = self.process_single_page(page, files)
             # Catch any exception so that we don't fail when only one page is in error
             except Exception as e:
-                self.report.append(f"An exception occurred while processing the page: {e}", logger_fct=logger.error)
+                self.report.append(f"An exception occurred while processing the page N°{index}: {e}", logger_fct=logger.error)
                 continue
 
             mets_pages.append(mets_page)

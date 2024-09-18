@@ -101,7 +101,6 @@ def create_task_reporting(sender, body, **kwargs):
     # Update the frontend display consequently
     update_client_state(task_kwargs, sender, "pending")
 
-    # TODO: Define an explicit "report_label" kwarg on all tasks
     default_report_label = f"Report for celery task {task_id} of type {sender}"
     TaskReport.objects.create(
         user=user,
