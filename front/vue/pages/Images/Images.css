@@ -78,6 +78,13 @@ body:has(.escr-images-page) {
     flex-flow: row nowrap;
     align-items: center;
 }
+.escr-images-toolbar .import-progress {
+    margin-left: 1rem;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 0.5rem;
+}
 .escr-parts-count {
     font-weight: 600;
     margin-right: 2rem;

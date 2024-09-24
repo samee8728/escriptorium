@@ -441,13 +441,13 @@ export default Vue.extend({
             return this.segmenter?.selection?.segments?.length !== 0 || false;
         },
         /**
-         * Return true if there is any line selected that is linked to a region.
+         * Return true if all lines selected are linked to a region.
          */
         selectionIsLinked() {
             return (this.segmenter?.regions?.length > 0 &&
-                    this.segmenter.selection?.lines?.filter(
+                    this.segmenter.selection?.lines?.every(
                         (l) => l.region !== null
-                    ).length > 0
+                    )
             ) || false;
         },
         /**

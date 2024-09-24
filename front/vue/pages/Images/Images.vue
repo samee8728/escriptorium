@@ -74,6 +74,13 @@
                             :disabled="(loading && loading.images) || !parts.length"
                             :on-click="onSubmitSearch"
                         />
+                        <div
+                            v-if="importProgress"
+                            class="import-progress"
+                        >
+                            <EscrLoader :loading="true" />
+                            <span>{{ importProgress }}</span>
+                        </div>
                     </div>
                     <div class="escr-toolbar-right">
                         <TextField
@@ -693,6 +700,7 @@ export default {
         return {
             contextMenuOpen: null,
             displayMode: "grid",
+            importProgress: "",
             isReorderMode: false,
             lastSelected: null,
             rangeValidationError: null,
@@ -928,6 +936,16 @@ export default {
             this.setLoading({ key: "document", loading: false });
             this.addError(error);
         }
+
+        // set selected image if select param is present
+        const params = new URLSearchParams(document.location.search);
+        const select = params.get("select");
+        if (select &&
+            parseInt(select) &&
+            this.parts.some((p) => p.pk === parseInt(select))
+        ) {
+            this.setSelectedParts([parseInt(select)]);
+        }
         // load models
         try {
             await this.fetchDocumentModels();
@@ -989,6 +1007,7 @@ export default {
         }),
         ...mapActions("user", ["fetchGroups", "fetchRecognizeModels", "fetchSegmentModels"]),
         ...mapMutations("images", ["setLoading", "setSelectedParts", "setIsDragging"]),
+        ...mapMutations("document", ["setPartsCount"]),
         /**
          * Close a context menu for an image.
          */
@@ -1202,9 +1221,14 @@ export default {
             }
             // update images on import progress
             if (data.name === "import:progress" || data.name === "import:done") {
-                this.setLoading({ key: "images", loading: true });
                 try {
                     await this.fetchParts();
+                    if (data.data?.progress && data.data.total) {
+                        this.importProgress = `${data.data.progress}/${data.data.total} imported`;
+                    } else {
+                        this.importProgress = "";
+                    }
+                    this.setPartsCount(this.parts.length);
                     this.setLoading({ key: "images", loading: false });
                 } catch (error) {
                     this.setLoading({ key: "images", loading: false });

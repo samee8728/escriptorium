@@ -21,7 +21,14 @@
             @dragstart="handleDragStart"
             @dragend="handleDragEnd"
         >
-            <img :src="part.thumbnail">
+            <a
+                class="img"
+                :href="part.href"
+                :disabled="loading && loading.images"
+                aria-label="edit image"
+            >
+                <img :src="part.thumbnail">
+            </a>
 
             <!-- select button -->
             <label

@@ -55,7 +55,8 @@
                     Include Characters
                 </label>
                 <span class="escr-help-text">
-                    This data is only present for transcriptions coming from automatic recognition and is invalidated by manual edition.
+                    This data is only present for transcriptions coming from automatic recognition
+                    and is invalidated by manual edition.
                 </span>
             </div>
 
@@ -163,6 +164,7 @@ export default {
     },
     computed: {
         ...mapState({
+            documentId: (state) => state.document.id,
             fileFormat: (state) => state.forms.export.fileFormat,
             formRegionTypes: (state) => state.forms.export.regionTypes,
             includeImages: (state) => state.forms.export.includeImages,
@@ -233,6 +235,28 @@ export default {
             return formatOptions;
         },
     },
+    created() {
+        // initialize transcription field with user's last edited transcription
+        // eslint-disable-next-line no-undef
+        let itrans = userProfile.get("initialTranscriptions");
+        if (itrans && itrans[this.documentId]) {
+            this.handleGenericInput({
+                form: "export",
+                field: "transcription",
+                value: itrans[this.documentId],
+            });
+        }
+        // initialize export format with user's last selected format
+        // eslint-disable-next-line no-undef
+        let exportFormat = userProfile.get("exportFormat");
+        if (exportFormat) {
+            this.handleGenericInput({
+                form: "export",
+                field: "fileFormat",
+                value: exportFormat,
+            });
+        }
+    },
     methods: {
         ...mapActions("forms", [
             "handleCheckboxArrayInput",
@@ -246,6 +270,9 @@ export default {
                 // if switching to text export, uncheck "include images"
                 this.handleGenericInput({ form: "export", field: "includeImages", value: false });
             }
+            // store the export format choice for later use
+            // eslint-disable-next-line no-undef
+            userProfile.set("exportFormat", e.target.value);
         },
         handleIncludeImagesChange(e) {
             this.handleGenericInput({

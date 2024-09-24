@@ -171,6 +171,7 @@ export default {
             documentName: (state) => state.document.name,
             elementFilename: (state) => state.parts.filename,
             elementNumber: (state) => state.parts.order,
+            elementPk: (state) => state.parts.pk,
             elementTitle: (state) => state.parts.title,
             nextPart: (state) => state.parts.next,
             partsCount: (state) => state.document.partsCount,
@@ -194,7 +195,10 @@ export default {
                     },
                     {
                         title: "Images",
-                        href: `/document/${this.documentId}/images`,
+                        // include select=pk to select the image being edited in the list
+                        href: `/document/${this.documentId}/images${
+                            this.elementPk ? "?select=" + this.elementPk : ""
+                        }`,
                     },
                     {
                         title: this.elementTitle ? this.elementTitle : "Loading...",
