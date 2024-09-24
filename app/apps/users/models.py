@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Sum
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
 from escriptorium.utils import send_email
@@ -115,6 +116,13 @@ class User(AbstractUser):
             # no token found
             pass
         return Token.objects.create(user=self)
+    expiry_date = models.DateTimeField(null=True, blank=True)
+
+    def is_account_expired(self):
+        """
+        check if the user's account has expired
+        """
+        return self.expiry_date and timezone.now() > self.expiry_date
 
 
 class ResearchField(models.Model):

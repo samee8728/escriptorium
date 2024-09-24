@@ -3,9 +3,13 @@ from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from users.models import GroupOwner, Invitation, ResearchField
 from users.models import User as CustomUser
+
+
+from rest_framework.authtoken.models import Token
 
 User = get_user_model()
 
@@ -223,3 +227,29 @@ class TeamTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.group.groupowner.refresh_from_db()
         self.assertEqual(self.group.groupowner.owner, self.invitee)
+
+class TokenAndSessionExpiryTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="expired_test", password="test123")
+        self.user.expiry_date = timezone.now() - timezone.timedelta(days=1)  # expired yesterday
+        self.user.save()
+        self.token = Token.objects.create(user=self.user)
+    
+    def test_token_deleted_on_expired_account(self):
+        # test for token authentication
+        response = self.client.post(reverse('api:document-list'), 
+                                    HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        
+        self.assertEqual(response.status_code, 403)
+        with self.assertRaises(Token.DoesNotExist):
+            Token.objects.get(user=self.user)
+
+    def test_session_logout_on_expired_account(self):
+        # test with session authentication
+        self.client.login(username="expired_test", password="test123")  
+        response = self.client.get(reverse('api:document-list'))
+        
+        self.assertEqual(response.status_code, 403)
+
+        response = self.client.get(reverse('profile'))
+        self.assertNotEqual(response.status_code, 200)  
