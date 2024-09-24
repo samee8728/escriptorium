@@ -59,9 +59,9 @@ export default {
             required: true,
         },
         /**
-         * Callback function for linking/unlinking selected lines to/from regions
+         * Callback function for linking selected lines to regions
          */
-        onLinkUnlink: {
+        onLink: {
             type: Function,
             required: true,
         },
@@ -69,6 +69,13 @@ export default {
          * Callback function for reversing the direction of the selected line(s)
          */
         onReverse: {
+            type: Function,
+            required: true,
+        },
+        /**
+         * Callback function for unlinking selected lines from regions
+         */
+        onUnlink: {
             type: Function,
             required: true,
         },
@@ -83,6 +90,13 @@ export default {
          * True if a region is linked to the currently selected line(s)
          */
         selectionIsLinked: {
+            type: Boolean,
+            required: true
+        },
+        /**
+         * True if a region is not linked to the currently selected line(s)
+         */
+        selectionIsUnlinked: {
             type: Boolean,
             required: true
         },

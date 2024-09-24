@@ -189,7 +189,8 @@
             :on-change-mode="onChangeMode"
             :on-change-selection-type="onChangeType"
             :on-delete="onDelete"
-            :on-link-unlink="onLinkUnlink"
+            :on-link="onLink"
+            :on-unlink="onUnlink"
             :on-join="onJoin"
             :on-toggle-line-numbering="onToggleLineNumbering"
             :on-redo="redo"
@@ -199,6 +200,7 @@
             :process-lines="processLines"
             :selected-type="selectedType"
             :selection-is-linked="selectionIsLinked"
+            :selection-is-unlinked="selectionIsUnlinked"
             :toggle-tool="onToggleTool"
             :toggle-toolbar-detached="toggleToolbarDetached"
             :tool="activeTool"
@@ -216,10 +218,12 @@
             :on-change-selection-type="onChangeType"
             :on-delete="onDelete"
             :on-join="onJoin"
-            :on-link-unlink="onLinkUnlink"
+            :on-link="onLink"
+            :on-unlink="onUnlink"
             :on-reverse="onReverse"
             :selected-type="selectedType"
             :selection-is-linked="selectionIsLinked"
+            :selection-is-unlinked="selectionIsUnlinked"
             :start-drag="startDragToolbar"
             :style="{
                 'left': `${toolbarPosition.x}px`,
@@ -447,6 +451,16 @@ export default Vue.extend({
             return (this.segmenter?.regions?.length > 0 &&
                     this.segmenter.selection?.lines?.every(
                         (l) => l.region !== null
+                    )
+            ) || false;
+        },
+        /**
+         * Return true if all lines selected are not linked to a region.
+         */
+        selectionIsUnlinked() {
+            return (this.segmenter?.regions?.length > 0 &&
+                    this.segmenter.selection?.lines?.every(
+                        (l) => l.region === null
                     )
             ) || false;
         },
@@ -1113,14 +1127,16 @@ export default Vue.extend({
             this.toggleTool(tool);
         },
         /**
-         * Link or unlink depending on state of selection.
+         * Link selected lines
          */
-        onLinkUnlink() {
-            if (this.selectionIsLinked) {
-                this.segmenter.unlinkSelection();
-            } else if (this.hasSelection) {
-                this.segmenter.linkSelection();
-            }
+        onLink() {
+            this.segmenter.linkSelection();
+        },
+        /**
+         * Unlink selected lines
+         */
+        onUnlink() {
+            this.segmenter.unlinkSelection();
         },
         /**
          * Change the type of lines or regions

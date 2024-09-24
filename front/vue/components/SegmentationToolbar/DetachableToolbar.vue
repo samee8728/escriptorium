@@ -90,7 +90,7 @@
         >
             <!-- link/unlink -->
             <VDropdown
-                v-if="['lines', 'masks'].includes(displayMode)"
+                v-if="['lines', 'masks'].includes(displayMode) && !selectionIsLinked"
                 theme="escr-tooltip-small"
                 placement="bottom"
                 :distance="8"
@@ -98,18 +98,40 @@
             >
                 <EscrButton
                     color="text"
-                    :aria-label="linkUnlinkTooltip"
-                    :on-click="onLinkUnlink"
+                    aria-label="Link selected lines to the first detected background region (Y)"
+                    :on-click="onLink"
                     :disabled="disabled"
                 >
                     <template #button-icon>
-                        <UnlinkIcon v-if="selectionIsLinked" />
-                        <LinkIcon v-else />
+                        <LinkIcon />
                     </template>
                 </EscrButton>
                 <template #popper>
                     <div class="escr-toolbar-tooltip">
-                        {{ linkUnlinkTooltip }}
+                        Link selected lines to the first detected background region (Y)
+                    </div>
+                </template>
+            </VDropdown>
+            <VDropdown
+                v-if="['lines', 'masks'].includes(displayMode) && !selectionIsUnlinked"
+                theme="escr-tooltip-small"
+                placement="bottom"
+                :distance="8"
+                :triggers="['hover']"
+            >
+                <EscrButton
+                    color="text"
+                    aria-label="Unlink selected lines from region (U)"
+                    :on-click="onUnlink"
+                    :disabled="disabled"
+                >
+                    <template #button-icon>
+                        <UnlinkIcon />
+                    </template>
+                </EscrButton>
+                <template #popper>
+                    <div class="escr-toolbar-tooltip">
+                        Unlink selected lines from region (U)
                     </div>
                 </template>
             </VDropdown>
@@ -330,7 +352,7 @@
     </div>
 </template>
 <script>
-import { Dropdown as VDropdown, Menu as VMenu, hideAllPoppers } from "floating-vue";
+import { Dropdown as VDropdown, Menu as VMenu } from "floating-vue";
 import { mapState } from "vuex";
 import AttachToolbarIcon from "../Icons/AttachToolbarIcon/AttachToolbarIcon.vue";
 import ChangeTypeIcon from "../Icons/ChangeTypeIcon/ChangeTypeIcon.vue";
@@ -400,16 +422,6 @@ export default {
             lineTypes: (state) => state.document.types.lines,
             regionTypes: (state) => state.document.types.regions,
         }),
-        /**
-         * String for the link/unlink tooltip depending on current state
-         */
-        linkUnlinkTooltip() {
-            if (this.selectionIsLinked) {
-                return "Unlink selected lines from region (U)";
-            } else {
-                return "Link selected lines to the first detected background region (Y)";
-            }
-        },
         /**
          * Current available types with "None" appended at the beginning
          */
