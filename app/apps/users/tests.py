@@ -152,6 +152,39 @@ class InvitationTestCase(TestCase):
 
         invitation.refresh_from_db()
         self.assertEqual(invitation.workflow_state, Invitation.STATE_ACCEPTED)
+    
+    @override_settings(AUTH_PASSWORD_VALIDATORS=[])
+    def test_accept_with_expiry_date(self):
+        expiry_date = timezone.now() + timezone.timedelta(days=30)
+        invitation = Invitation.objects.create(
+            sender=self.sender,
+            recipient_first_name="jim",
+            recipient_last_name="doey",
+            recipient_email="jim@test.com",
+            group=self.group,
+            expiry_date=expiry_date
+        )
+
+        url = reverse('accept-invitation', kwargs={'token': invitation.token})
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(10): # the extra query -> for the expiry date
+            response = self.client.post(url, {
+                'email': invitation.recipient_email,
+                'username': 'jimd',
+                'first_name': "jim",
+                'last_name': "doey",
+                'password1': 'test',
+                'password2': 'test',
+            })
+
+        self.assertNotContains(response, "error", status_code=302)
+
+        user = User.objects.get(username="jimd")
+        self.assertEqual(user.expiry_date, expiry_date)  # check expiry_date
+
 
 
 class NotificationTestCase(TestCase):

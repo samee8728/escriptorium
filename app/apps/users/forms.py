@@ -12,12 +12,17 @@ from users.models import ContactUs, GroupOwner, Invitation, User
 
 
 class InvitationForm(BootstrapFormMixin, forms.ModelForm):
+    expiry_date = forms.DateTimeField(
+        required=False, 
+        widget=forms.TextInput(attrs={'type': 'date'}),
+        help_text="Optional: set an expiry date for this user's account"
+    ) 
     class Meta:
         model = Invitation
         fields = ['recipient_first_name',
                   'recipient_last_name',
                   'recipient_email',
-                  'group']
+                  'group','expiry_date']
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request')

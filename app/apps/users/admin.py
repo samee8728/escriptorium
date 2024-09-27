@@ -21,7 +21,11 @@ class MyUserChangeForm(UserChangeForm):
 
 class MyUserCreationForm(UserCreationForm):
     email = forms.EmailField()
-
+    expiry_date = forms.DateTimeField(
+        required=False,
+        widget=forms.TextInput(attrs={'type': 'date'}),
+        help_text="Optional: Set the user's account expiry date"
+    ) 
     class Meta(UserCreationForm.Meta):
         model = User
         fields = UserCreationForm.Meta.fields + ('email',)
@@ -45,7 +49,7 @@ class MyUserAdmin(UserAdmin):
     )
     add_fieldsets = (
         (None, {
-            'fields': ('username', 'email', 'password1', 'password2')}
+            'fields': ('username', 'email', 'password1', 'password2','expiry_date')}
          ),
         ('Quotas management (if not defined, fallback to instance quotas)', {'fields': ('quota_disk_storage', 'quota_cpu', 'quota_gpu')}),
     )
@@ -66,7 +70,7 @@ class InvitationAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     list_filter = ('workflow_state', 'group')
     list_display = ('recipient_email_', 'recipient_last_name_', 'recipient_first_name_',
-                    'group', 'sender', 'workflow_state')
+                    'group', 'sender', 'workflow_state','expiry_date')
     readonly_fields = ('sender', 'recipient', 'token', 'created_at', 'sent_at', 'workflow_state')
     search_fields = ('recipient_email', 'recipient__username',
                      'recipient_last_name', 'recipient_first_name',

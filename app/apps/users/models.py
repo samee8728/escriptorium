@@ -166,6 +166,7 @@ class Invitation(models.Model):
     token = models.UUIDField(default=uuid.uuid4, editable=False)
     workflow_state = models.SmallIntegerField(choices=STATE_CHOICES, default=STATE_CREATED,
                                               editable=False)
+    expiry_date = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -193,6 +194,7 @@ class Invitation(models.Model):
             "recipient_email": self.recipient.email,
             "team": self.group.name,
             "accept_link": accept_url,
+            "expiry_date": self.expiry_date, 
         }
         self.send_email((self.recipient.email,), context)
 
@@ -206,6 +208,7 @@ class Invitation(models.Model):
             "recipient_email": self.recipient_email,
             "team": self.group and self.group.name,
             "accept_link": accept_url,
+            "expiry_date": self.expiry_date, 
         }
         self.send_email((self.recipient_email,), context)
 
@@ -232,6 +235,9 @@ class Invitation(models.Model):
         if self.recipient and self.recipient != user:
             return False
         self.recipient = user
+        if self.expiry_date:
+            user.expiry_date = self.expiry_date
+            user.save()  
         self.workflow_state = self.STATE_ACCEPTED
         self.save()
         if self.group:
