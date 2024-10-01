@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import permission_required
 from django.urls import include, path
+from django_registration.backends.activation.views import RegistrationView
 
+from users.forms import RegistrationForm
 from users.views import (
     AcceptGroupInvitation,
     AcceptInvitation,
@@ -35,5 +37,9 @@ urlpatterns = [
          name='send-invitation'),
     path('accept/<token>/', AcceptInvitation.as_view(), name='accept-invitation'),
     path('accept/group/<slug>/', AcceptGroupInvitation.as_view(), name='accept-group-invitation'),
+
+    path('register/', RegistrationView.as_view(form_class=RegistrationForm),
+         name='django_registration_register'),
+    path('', include('django_registration.backends.activation.urls')),
     path('contact/', ContactUsView.as_view(), name='contactus'),
 ]

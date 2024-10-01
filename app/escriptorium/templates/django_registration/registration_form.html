@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n bootstrap %}
+
+{% block body %}
+<h1>{% trans "Register" %}</h1>
+<div class="row container">
+  <div class="col-md-6 col-md-offset-4">
+
+    <form method="post">
+      {% csrf_token %}
+      <fieldset>
+        {% render_field form.username %}
+        {% render_field form.email %}
+        {% render_field form.first_name %}
+        {% render_field form.last_name %}
+        {% render_field form.password1 %}
+        {% render_field form.password2 %}
+
+        <input type="submit" value="{% trans 'Send' %}" class="btn btn-lg btn-success btn-block">
+      </fieldset>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
