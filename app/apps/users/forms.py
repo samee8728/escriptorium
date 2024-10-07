@@ -14,7 +14,7 @@ from users.models import ContactUs, GroupOwner, Invitation, User
 class InvitationForm(BootstrapFormMixin, forms.ModelForm):
     expiry_date = forms.DateTimeField(
         required=False, 
-        widget=forms.TextInput(attrs={'type': 'date'}),
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         help_text="Optional: set an expiry date for this user's account"
     ) 
     class Meta:
