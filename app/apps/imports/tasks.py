@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True)
-def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=None, report_label=None):
+def document_import(task, document_pk=None, import_pk=None,
+                    resume=True, task_id=None, user_pk=None,
+                    task_group_pk=None, report_label=None, **kwargs):
     DocumentImport = apps.get_model('imports', 'DocumentImport')
     TaskReport = apps.get_model('reporting', 'TaskReport')
     User = apps.get_model('users', 'User')
@@ -78,7 +80,7 @@ def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=Non
 def document_export(task, file_format, part_pks,
                     transcription_pk, region_types, document_pk=None,
                     include_images=False, include_characters=False,
-                    user_pk=None, report_label=None):
+                    user_pk=None, report_label=None, task_group_pk=None, **kwargs):
     User = apps.get_model('users', 'User')
     Document = apps.get_model('core', 'Document')
     Transcription = apps.get_model('core', 'Transcription')
