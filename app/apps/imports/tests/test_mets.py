@@ -429,14 +429,10 @@ class METSProcessorTestCase(CoreFactoryTestCase):
             mets_pages, _ = processor.process()
 
         self.assertEqual(mock_log.output, [
-            "INFO:imports.mets:Processing the page n°1 from the provided METS file",
-            "ERROR:imports.mets:An exception occurred while processing the page: Uhoh, something went wrong.",
-            "INFO:imports.mets:Processing the page n°2 from the provided METS file",
-            "ERROR:imports.mets:An exception occurred while processing the page: Uhoh, something went wrong.",
-            "INFO:imports.mets:Processing the page n°3 from the provided METS file",
-            "ERROR:imports.mets:An exception occurred while processing the page: Uhoh, something went wrong.",
-            "INFO:imports.mets:Processing the page n°4 from the provided METS file",
-            "ERROR:imports.mets:An exception occurred while processing the page: Uhoh, something went wrong.",
+            "ERROR:imports.mets:An exception occurred while processing the page N°1: Uhoh, something went wrong.",
+            "ERROR:imports.mets:An exception occurred while processing the page N°2: Uhoh, something went wrong.",
+            "ERROR:imports.mets:An exception occurred while processing the page N°3: Uhoh, something went wrong.",
+            "ERROR:imports.mets:An exception occurred while processing the page N°4: Uhoh, something went wrong.",
         ])
         self.assertListEqual(mets_pages, [])
 

@@ -195,6 +195,7 @@ class ImportForm(BootstrapFormMixin, forms.Form):
 
     def process(self):
         document_import.delay(
+            document_pk=self.document.pk,
             import_pk=self.instance.pk,
             user_pk=self.user.pk,
             report_label=_('Import in %(document_name)s') % {'document_name': self.document.name}
