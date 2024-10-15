@@ -166,7 +166,9 @@ export default {
             await this.$store.dispatch("parts/fetchPart", {pk: this.partId});
             let tr = userProfile.get("initialTranscriptions")
                   && userProfile.get("initialTranscriptions")[this.$store.state.document.id]
+                  && this.$store.state.transcriptions.all.find(e => e.pk == userProfile.get("initialTranscriptions"))
                   || this.$store.state.transcriptions.all[0].pk;
+
             this.$store.commit("transcriptions/setSelectedTranscription", tr);
         } catch (err) {
             console.log("couldn't fetch part data!", err);

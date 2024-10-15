@@ -406,7 +406,7 @@ class DocumentTagSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     main_script = serializers.SlugRelatedField(slug_field='name',
                                                queryset=Script.objects.all())
-    transcriptions = TranscriptionSerializer(many=True, read_only=True)
+
     valid_block_types = BlockTypeSerializer(many=True, read_only=True)
     valid_line_types = LineTypeSerializer(many=True, read_only=True)
     valid_part_types = DocumentPartTypeSerializer(many=True, read_only=True)
@@ -446,6 +446,8 @@ class DocumentSerializer(serializers.ModelSerializer):
         # only use DocumentTagSerializer on GET; otherwise, use pks
         repr = super().to_representation(instance)
         repr['tags'] = [DocumentTagSerializer(tag).data for tag in instance.tags.all()]
+        repr['transcriptions'] = [TranscriptionSerializer(tr).data
+                                  for tr in instance.transcriptions.filter(archived=False)]
         return repr
 
 
