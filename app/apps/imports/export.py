@@ -59,7 +59,7 @@ class BaseExporter:
             self.document.pk,
             slugify(self.document.name).replace("-", "_")[:32],
             self.file_format,
-            datetime.now().strftime("%Y%m%d%H%M"),
+            datetime.now().strftime("%Y%m%d%H%M%S"),
         )
         assert hasattr(
             self, "file_extension"
