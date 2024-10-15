@@ -956,17 +956,17 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         model = self.validated_data.get('model')
         override = self.validated_data.get('override')
 
-        if self.validated_data.get('model_name'):
-            file_ = model.file if model else None
+        if not model:
+            # Note: will clone default kraken model in the task
             model = OcrModel.objects.create(
                 owner=self.user,
-                name=self.validated_data['model_name'],
+                name=self.validated_data.get('model_name'),
                 job=OcrModel.MODEL_JOB_SEGMENT,
-                file=file_,
-                file_size=file_.size if file_ else 0
+                file_size=0
             )
+
         elif not override:
-            model = model.clone_for_training(self.user, name=None)
+            model = model.clone_for_training(self.user, name=self.validated_data.get('model_name'))
 
         ocr_model_document, created = OcrModelDocument.objects.get_or_create(
             document=self.document,
@@ -1159,17 +1159,16 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         model = self.validated_data.get('model')
         override = self.validated_data.get('override')
 
-        if self.validated_data.get('model_name'):
-            file_ = model.file if model else None
+        if not model:
             model = OcrModel.objects.create(
                 owner=self.user,
-                name=self.validated_data['model_name'],
+                name=self.validated_data.get('model_name'),
                 job=OcrModel.MODEL_JOB_RECOGNIZE,
-                file=file_,
-                file_size=file_.size if file_ else 0
+                file_size=0
             )
-        elif not override:
-            model = model.clone_for_training(self.user, name=None)
+
+        if not override:
+            model = model.clone_for_training(self.user, name=self.validated_data.get('model_name'))
 
         ocr_model_document, created = OcrModelDocument.objects.get_or_create(
             document=self.document,
