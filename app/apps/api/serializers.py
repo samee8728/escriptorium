@@ -1166,8 +1166,7 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
                 job=OcrModel.MODEL_JOB_RECOGNIZE,
                 file_size=0
             )
-
-        if not override:
+        elif not override:
             model = model.clone_for_training(self.user, name=self.validated_data.get('model_name'))
 
         ocr_model_document, created = OcrModelDocument.objects.get_or_create(
