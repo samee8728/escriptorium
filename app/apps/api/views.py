@@ -996,7 +996,7 @@ class TypologyViewSet(ModelViewSet):
                 | Q(valid_in__shared_with_groups__user=self.request.user)
                 | Q(valid_in__project__owner=self.request.user)
                 | Q(valid_in__project__shared_with_users=self.request.user)
-            )
+            ).distinct()
         return qs
 
 
