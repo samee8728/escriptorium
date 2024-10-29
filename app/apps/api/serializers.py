@@ -417,6 +417,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     project_id = serializers.SerializerMethodField()
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
+    transcriptions = TranscriptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Document
@@ -446,8 +447,6 @@ class DocumentSerializer(serializers.ModelSerializer):
         # only use DocumentTagSerializer on GET; otherwise, use pks
         repr = super().to_representation(instance)
         repr['tags'] = [DocumentTagSerializer(tag).data for tag in instance.tags.all()]
-        repr['transcriptions'] = [TranscriptionSerializer(tr).data
-                                  for tr in instance.transcriptions.filter(archived=False)]
         return repr
 
 
