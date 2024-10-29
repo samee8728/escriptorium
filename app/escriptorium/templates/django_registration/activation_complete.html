@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block body %}
+<div class="jumbotron text-center">
+  <h1 class="jumbotron-heading">{% trans "Your account is now activated." %}</h1>
+  <p>{% trans "You can now login" %}</p>
+  <a class="btn btn-primary" href="{% url 'login' %}" role="button">{% trans "Sign in" %}</a>
+</div>
+{% endblock %}

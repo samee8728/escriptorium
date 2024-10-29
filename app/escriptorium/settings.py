@@ -438,6 +438,11 @@ QUOTA_GPU_MINUTES = int(os.environ['QUOTA_GPU_MINUTES']) if os.environ.get('QUOT
 # Number of days that we have to wait before sending a new email to a user that reached one or more of its quotas
 QUOTA_NOTIFICATIONS_TIMEOUT = int(os.environ.get('QUOTA_NOTIFICATIONS_TIMEOUT', '3'))
 
+# if set to true, enables anybody to create an account
+# it is very recommended to use the quotas system then.
+REGISTRATION_OPEN = os.getenv('REGISTRATION_OPEN', "False").lower() not in ("false", "0")
+ACCOUNT_ACTIVATION_DAYS = 7
+
 # Boolean used to enable the OpenITI mARkdown export mode
 EXPORT_OPENITI_MARKDOWN_ENABLED = os.getenv('EXPORT_OPENITI_MARKDOWN', "False").lower() not in ("false", "0")
 

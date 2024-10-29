@@ -6,6 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group
 from django.db.models import Q
 from django.utils.translation import gettext as _
+from django_registration.forms import RegistrationForm as BaseRegistrationForm
 
 from escriptorium.utils import send_email
 from users.models import ContactUs, GroupOwner, Invitation, User
@@ -32,6 +33,17 @@ class InvitationForm(BootstrapFormMixin, forms.ModelForm):
             invitation.save()
             invitation.send(self.request)
         return invitation
+
+
+class RegistrationForm(BootstrapFormMixin, BaseRegistrationForm):
+    class Meta(BaseRegistrationForm.Meta):
+        model = User
+        fields = ['username',
+                  'email',
+                  'first_name',
+                  'last_name',
+                  'password1',
+                  'password2']
 
 
 class GroupInvitationForm(InvitationForm):

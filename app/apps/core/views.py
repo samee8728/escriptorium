@@ -97,6 +97,7 @@ class Home(TemplateView):
         context = super().get_context_data(*args, **kwargs)
         context['VERSION_DATE'] = settings.VERSION_DATE
         context['KRAKEN_VERSION'] = settings.KRAKEN_VERSION
+        context['REGISTRATION_OPEN'] = settings.REGISTRATION_OPEN
         return context
 
 
