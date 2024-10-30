@@ -406,7 +406,7 @@ class DocumentTagSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     main_script = serializers.SlugRelatedField(slug_field='name',
                                                queryset=Script.objects.all())
-    transcriptions = TranscriptionSerializer(many=True, read_only=True)
+
     valid_block_types = BlockTypeSerializer(many=True, read_only=True)
     valid_line_types = LineTypeSerializer(many=True, read_only=True)
     valid_part_types = DocumentPartTypeSerializer(many=True, read_only=True)
@@ -417,6 +417,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     project_id = serializers.SerializerMethodField()
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
+    transcriptions = TranscriptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Document
