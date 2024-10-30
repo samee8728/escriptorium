@@ -2014,6 +2014,7 @@ class OcrModel(ExportModelOperationsMixin("OcrModel"), Versioned, models.Model):
             file_size=self.file.size,
         )
         model.file = File(self.file, name=f'{name}.mlmodel')
+        # Note: this copy the actual file on the file system
         model.save()
 
         # if not model.public:
