@@ -389,7 +389,6 @@ export const trainRecognizerModel = async ({
         override,
         parts,
         transcription,
-        model_name: modelName,
     };
     if (model) {
         params.model = model;
